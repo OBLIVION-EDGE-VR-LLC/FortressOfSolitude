@@ -1,2 +1,9 @@
-{% extends parent_template|default:"superhero/base.html" %}
+{% extends "superhero/base.html" %}
 {% load static %}
+
+{% block content %}
+<div class="writing">
+    <h1>Login</h1>
+    {% include "superhero/login_form.html" %}
+</div>
+{% endblock %}

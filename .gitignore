@@ -1,1 +1,8 @@
-.pyc
+bin/
+.venv
+.vscode
+*pyvenv.cfg
+*.pyc
+*fortressofsolitudevenv/
+*__pycache__/
+*lib/

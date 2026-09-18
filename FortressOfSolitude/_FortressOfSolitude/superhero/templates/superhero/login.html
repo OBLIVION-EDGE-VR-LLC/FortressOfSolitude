@@ -1,13 +1,38 @@
-{%extends parent_template|default:"superhero/base_superhero.html" %}
+{% extends "superhero/base.html" %}
+{% load static %}
 
-{% block title %}
-{{ block.super }} - Login
-{% endblock %}
+{# -------------------------
+   PAGE STATE DECLARATIONS
+   ------------------------- #}
+
+{% block body_class %}splash{% endblock %}
+{% block is_splash %}true{% endblock %}
+
+{# -------------------------
+   SPLASH CONTENT
+   ------------------------- #}
 
 {% block content %}
-<div class="row">
-  <div align="center" class="offset-by-two five columns">
-    {% include "superhero/login_form.html" %}
+<div class="splash-shell">
+
+  <!-- Logo / Symbol Layer -->
+  <div class="splash-logo">
+    <img
+      src="{% static 'img/fortress_of_solitude_logo.png' %}"
+      alt="Fortress of Solitude"
+    />
   </div>
+
+  <!-- Credential Overlay -->
+  <div class="splash-credentials">
+
+    {% include "superhero/login_form.html" %}
+
+    <p class="neutrino-hint">
+      NEUTRINO KEY EXCHANGE
+    </p>
+
+  </div>
+
 </div>
 {% endblock %}

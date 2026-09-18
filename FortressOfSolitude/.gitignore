@@ -1,0 +1,4 @@
+bin/
+.pyc
+fortressofsolitudevenv/
+__pycache__/

@@ -72,4 +72,4 @@ class TaskingForm(SlugCleanMixin, forms.ModelForm):
 class UploadFileForm(SlugCleanMixin,forms.Form):
     title = forms.CharField(max_length=32)
     file = forms.FileField()
-    file_field = forms.FileField(widget=forms.ClearableFileInput(attrs={'multiple': True}))
+    file_field = forms.FileField(widget=forms.ClearableFileInput(attrs={'multiple': False}))

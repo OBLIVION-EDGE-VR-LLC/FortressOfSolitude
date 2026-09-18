@@ -59,7 +59,7 @@ class Librarian(models.Manager):
 
     def get_queryset(self):
         qs = models.QuerySet(self.model)
-        if self._db is not None:
+        if self._db:
             qs = qs.using('default')
         return qs
 
@@ -261,7 +261,7 @@ class Gor_El(models.Manager):
         data_dek = secureNote.data_dek
         data_kek = secureNote.data_kek
         try:
-            if data_dek is None:
+            if data_dek:
                 return b"Look the data_dek got deleted wise guy"
             data_dek = data_dek.get()
         except MultipleObjectsReturned as e:
@@ -308,7 +308,7 @@ class Gor_El(models.Manager):
             else:
                 ciphertext = ciphertext.encode()
 
-            if str(request.user) is "AnonymousUser":
+            if str(request.user) == "AnonymousUser":
                 data_dek: DEK = secureNote.data_dek.get()
                 data_kek: KEK = secureNote.data_kek.get()
                 # data_kek.crypto.nonce = b64decode(data_kek.result_wrapped_nonce)
@@ -343,7 +343,7 @@ class Gor_El(models.Manager):
 
         hash = CryptoTools()
 
-        if str(request.user) is "AnonymousUser":
+        if str(request.user) == "AnonymousUser":
             data_dek.crypto.nonce = b64decode(result_wrapped_nonce)
             plaintext = data_dek.crypto.AesDecryptEAX(ciphertext, CryptoTools().Sha256(key))
         else:

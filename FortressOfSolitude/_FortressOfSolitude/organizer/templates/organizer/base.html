@@ -1,161 +1,117 @@
 ﻿<!DOCTYPE html>
 {% load static %}
-<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<html lang="en">
 <head>
     <meta charset="utf-8" />
+
     <title>
         {% block title %}
-        Startup superhero
+            1337_TECH // Fortress of Solitude
         {% endblock %}
     </title>
-    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrom=1" />
-    <meta name=" = viewport" content="width=device-width, iniital-scale=1" />
-    <link href="//fonts.googleapis.com/css?family=Lobster&subset=latin,latin-ext" rel="stylesheet" type="text/css">
-    <link href="https://fonts.googleapis.com/css?family=Oswald&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Righteous&display=swap" rel="stylesheet">
-    <link href='https://fonts.googleapis.com/css?family=Roboto:100' rel='stylesheet' type='text/css'>
+
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- Typography -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Bangers&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+
+    <!-- Core stylesheet -->
     <link rel="stylesheet" href="{% static 'css/loginformstyle.css' %}">
-    <style>
-        nav {
-            font-size: 100%;
-            position: fixed;
-            top: 0;
-            width: 100%;
-            background:  radial-gradient(grey, dimgrey) !important;
-            overflow: hidden;
-            margin: 0;
-            padding: 0;
-            border: 4px solid black;
-            border-radius: 4px;
-        }
-        nav a {
-            float: left;
-            text-decoration: none;
-            padding: 14px 23px;
-        }
-
-            nav a:hover {
-                background-color: dimgrey;
-
-            }
-
-       ul.stayClassySanDiego {
-           list-style-type: none;
-            font-size: 100%;
-            position: fixed;
-            right: 0;
-            height: 100%;
-            width: 121px;
-            background:  radial-gradient(grey, dimgrey ) !important;
-            overflow: hidden;
-            margin: 90px 0px 0px 0px;
-            padding: 0px;
-            border: 3px solid black;
-            border-radius: 5px;
-
-            }
-            ul.stayClassySanDiego li a {
-                    float: left;
-                    text-decoration: none;
-                    padding: 5px 5px;
-
-
-                }
-             ul.stayClassySanDiego li a:hover {
-                    background-color: #30bf47;
-                    width: 100%;
-                    border-radius: 7px;
-                }
-
-        footer.bottomFooter {
-            position: fixed;
-            bottom: 0;
-            width: 100%;
-            background: radial-gradient(grey, dimgrey);
-            border: 4px solid grey;
-            border-radius: 5px;
-
-        }
-
-    </style>
 </head>
-<body class="CuttingEdge"> <!-- chartreuse -->
-        <div class="container" align="center" >
-             <div class="container" align="left">
-                <ul class="stayClassySanDiego">
-                    <li><a href="{% url 'organizer_tag_create' %}"><h><font face="verdana" style="font-weight:bold;" color="Black">Tagging</font></h></a></li>
-                    <li><a href="{% url 'organizer_tasking_create' %}"><h><font face="verdana" style="font-weight:bold;" color="Black">Tasking</font></h></a></li>
-                    <li><a href="{% url 'blog_post_create' %}"><h><font face="verdana" style="font-weight:bold;" color="Black">Note Taking</font></h></a></li>
-                    <li><a href="{% url 'blog_securepost_create' %}"><h><font face="verdana" style="font-weight:bold;" color="Black">SecureNote Taking</font></h></a></li>
-                    <li><a href="{% url 'blog_securepost_public_create' %}"><h><font face="verdana" style="font-weight:bold;" color="Black">Research Blog</font></h></a></li>
-                </ul>
-            </div>
-            <div class="container navbar-right" >
-                <nav >
-                        <a class="navbar-item" text-align="center">
-                            <img src="{% static 'img/banner/banner_left_logo.png' %}" alt="Do_You_Have_The_Strength?" width="121" height="75" />
-                        </a>
-                        <a class="navbar-item" text-align="center" style="margin-top:30px;font-family:Bangers;" href="{% url 'organizer_upload_create' %}">
-                            <h1 align="center" class="DDDBLUE" style="margin-top:-5px" >Fortress of Solitude</h1>
-                            <h1 align="center" class="DDDRED" style="margin-top:-30px;margin-right:-5px">Fortress of Solitude</font></h1>
-                        </a>
 
+<body class="CuttingEdge">
 
-                       <a href="{% url 'organizer_tag_list' %}" style="margin-top:30px;font-family:Bangers; ">
-                           <h1 align="center" class="DDDBLUE" style="margin-top:-5px" >Tag List</h1>
-                            <h1 align="center" class="DDDRED" style="margin-top:-30px;margin-right:-5px">Tag List</font></h1>
-                       </a>
+    <!-- =========================
+         TOP NAV / CONTROL HEADER
+         ========================= -->
+    <header>
+        <nav>
 
-                       <a href="{% url 'organizer_tasking_list' %}" style="margin-top:30px;font-family:Bangers;">
-                           <h1 align="center" class="DDDBLUE" style="margin-top:-5px" >Tasking List</h1>
-                            <h1 align="center" class="DDDRED" style="margin-top:-30px;margin-right:-5px">Tasking List</font></h1>
-                       </a>
-                       <a href="{% url 'blog_securepost_public_list' %}" style="margin-top:30px; font-family:Bangers;">
-                           <h1 align="center" class="DDDBLUE" style="margin-top:-5px" >1337_TECH BLOG</h1>
-                            <h1 align="center" class="DDDRED" style="margin-top:-30px;margin-right:-5px">1337_TECH BLOG</font></h1>
-                       </a>
-
-                </nav>
+            <!-- Left: Fortress mark -->
+            <div class="nav-left">
+                <img
+                    src="{% static 'img/banner/banner_left_logo.png' %}"
+                    alt="Fortress of Solitude"
+                    width="96"
+                    height="60"
+                />
             </div>
 
-      </div>
+            <!-- Center: System title -->
+            <div class="nav-center">
+                <a href="{% url 'organizer_upload_create' %}" class="nav-title">
+                    Fortress of Solitude
+                </a>
+            </div>
 
-    <div  style="padding:20px;margin-top:55px;"></div>
+            <!-- Right: Primary modules -->
+            <div class="nav-right">
+                <a href="{% url 'organizer_tag_list' %}">Tags</a>
+                <a href="{% url 'organizer_tasking_list' %}">Tasks</a>
+                <a href="{% url 'blog_securepost_public_list' %}">Research</a>
+            </div>
+
+        </nav>
+    </header>
+
+    <!-- =========================
+         MODULE RAIL
+         ========================= -->
+    <aside class="module-rail">
+        <a href="{% url 'organizer_tag_create' %}">Tagging</a>
+        <a href="{% url 'organizer_tasking_create' %}">Tasking</a>
+        <a href="{% url 'blog_post_create' %}">Notes</a>
+        <a href="{% url 'blog_securepost_create' %}">Secure Notes</a>
+        <a href="{% url 'blog_securepost_public_create' %}">Research</a>
+    </aside>
+
+    <!-- =========================
+         MAIN CONTENT (ZINE SLAB)
+         ========================= -->
     <main class="writing">
+
         {% block content %}
-        This is default content!
+        <p>This is default content.</p>
         {% endblock %}
+
     </main>
 
-    <div class="status row">
-      <div class="offset-by-eight four columns">
-        <ul class="inline" style="list-style-type: none;">
-          {% if user.is_authenticated %}
-          <li><button class="LogoutButton"><a type="submit" href="{% url 'dj-auth:logout' %}?
-                 next={{ request.path }}">
-            Log Out</a></button></li>
+    <!-- =========================
+         AUTH STATUS
+         ========================= -->
+    <section class="status row">
+        <div class="status-controls">
+            {% if user.is_authenticated %}
+                <a class="auth-button"
+                   href="{% url 'dj-auth:logout' %}?next={{ request.path }}">
+                    Log Out
+                </a>
             {% else %}
-            <li><button class="LoginButton"><a href="{% url 'dj-auth:login' %}?
-                   next={{ request.path }}">
-              Log In</a></button></li>
-              {% endif %}
-            </ul>
-          </div>
+                <a class="auth-button"
+                   href="{% url 'dj-auth:login' %}?next={{ request.path }}">
+                    Log In
+                </a>
+            {% endif %}
         </div>
-    <div><!-- container-->
-        <footer class="bottomFooter" >
-            <p align="center"><a href="https://1337t3c4.com" >
-{#            <p align="center" style="z-index:1;">#}
-{#                &copy; 2022#}
-                <img src="{% static 'img/logo/transparent_1337_tech_logo.png' %}" width="75" height="75" style="border-radius: 10px;" /> </a>
+    </section>
 
-            </p>
-
-        </footer>
-    </div>
+    <!-- =========================
+         FOOTER
+         ========================= -->
+    <footer class="bottomFooter">
+        <a href="https://fortressofsolitude.org" target="_blank" rel="noopener noreferrer">
+            <img
+                src="{% static 'img/logo/transparent_1337_tech_logo.png' %}"
+                width="64"
+                height="64"
+                alt="Fortress of Solitude"
+                class="smooth"
+            />
+        </a>
+    </footer>
 
 </body>
 </html>

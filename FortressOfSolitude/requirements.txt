@@ -6,8 +6,9 @@ pytz~=2021.1
 kombu~=3.0.37
 Django~=3.2.5
 billiard~=3.3.0.23
-celery~=3.1.26.post2
 sqlparse~=0.4.1
 setuptools~=56.2.0
 pycryptodome~=3.9.9
-ckeditor
+django-ckeditor
+cryptography~=3.4.7
+pillow~=8.2.0
