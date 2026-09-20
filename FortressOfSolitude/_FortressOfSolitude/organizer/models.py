@@ -8,6 +8,7 @@ from base64 import (b64encode, b64decode)
 from datetime import datetime
 from ctypes import Union
 
+from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
 from django.core.exceptions import MultipleObjectsReturned
 from django.core.files.base import ContentFile
@@ -261,7 +262,7 @@ class Gor_El(models.Manager):
         data_dek = secureNote.data_dek
         data_kek = secureNote.data_kek
         try:
-            if data_dek:
+            if not data_dek.exists():
                 return b"Look the data_dek got deleted wise guy"
             data_dek = data_dek.get()
         except MultipleObjectsReturned as e:
@@ -534,6 +535,11 @@ class MusicFile(models.Model):
     data_dek = models.ForeignKey(DEK, default=1, on_delete=models.CASCADE)
     data_kek = models.ForeignKey(KEK, default=1, on_delete=models.CASCADE)
     result_nonce_file = models.CharField(max_length=128, default=b64encode(int(55).to_bytes(4, 'big')))
+    folder = models.ForeignKey(
+        'UserFolder', null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='%(class)s_files',
+    )
 
     objects = Librarian()
 
@@ -564,6 +570,11 @@ class ImageFile(models.Model):
     data_dek = models.ManyToManyField(DEK, default=1)
     data_kek = models.ManyToManyField(KEK, default=1)
     result_nonce_file = models.CharField(max_length=128, default=b64encode(int(55).to_bytes(4, 'big')))
+    folder = models.ForeignKey(
+        'UserFolder', null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='%(class)s_files',
+    )
 
     objects = Librarian()
 
@@ -603,6 +614,11 @@ class VideoFile(models.Model):
     data_dek = models.ManyToManyField(DEK, default=1)
     data_kek = models.ManyToManyField(KEK, default=1)
     result_nonce_file = models.CharField(max_length=128, default=b64encode(int(55).to_bytes(4, 'big')))
+    folder = models.ForeignKey(
+        'UserFolder', null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='%(class)s_files',
+    )
 
     objects = Librarian()
 
@@ -637,6 +653,11 @@ class MiscFile(models.Model):
     data_dek = models.ForeignKey(DEK, default=1, on_delete=models.CASCADE)
     data_kek = models.ForeignKey(KEK, default=1, on_delete=models.CASCADE)
     result_nonce_file = models.CharField(max_length=128, default=b64encode(int(55).to_bytes(4, 'big')))
+    folder = models.ForeignKey(
+        'UserFolder', null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='%(class)s_files',
+    )
 
     objects = Librarian()
 
@@ -656,6 +677,168 @@ class MiscFile(models.Model):
 
     def natural_key(self):
         return (self.image_file,)
+
+
+class UserFolder(models.Model):
+    """
+    Encrypted folder hierarchy for users. Each folder has its own DEK
+    (per-scope encryption), all sharing the user's root KEK.
+    Enables folder-level sharing via proxy re-encryption in Sub-project 3.
+    """
+    name = models.CharField(max_length=128)
+    slug = models.SlugField(max_length=128)
+    parent = models.ForeignKey(
+        'self', null=True, blank=True,
+        on_delete=models.CASCADE,
+        related_name='children',
+    )
+    owner = models.ForeignKey(
+        get_user_model(),
+        on_delete=models.CASCADE,
+        related_name='folders',
+    )
+    kek = models.ForeignKey(
+        KEK, on_delete=models.PROTECT,
+        related_name='folders',
+    )
+    dek = models.ForeignKey(
+        DEK, on_delete=models.PROTECT,
+        related_name='folders',
+    )
+    dek_nonce = models.CharField(
+        max_length=128,
+        help_text='Base64-encoded nonce for this folder DEK',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [('owner', 'parent', 'name')]
+        ordering = ['name']
+
+    def __str__(self):
+        return f'{self.owner.email}:/{self.get_path()}'
+
+    def get_path(self):
+        """Return the full path string like 'root/projects/alpha'."""
+        parts = [f.name for f in self.get_breadcrumbs()]
+        return '/'.join(parts)
+
+    def get_children(self):
+        """Return direct child folders."""
+        return UserFolder.objects.filter(parent=self)
+
+    def get_breadcrumbs(self):
+        """Return list of folders from root to self."""
+        breadcrumbs = []
+        current = self
+        while current is not None:
+            breadcrumbs.append(current)
+            current = current.parent
+        breadcrumbs.reverse()
+        return breadcrumbs
+
+    @classmethod
+    def create_root_for_user(cls, user, password):
+        """
+        Create the root folder and default subfolders for a user.
+        If root already exists, return it without creating duplicates.
+        password must be bytes.
+        """
+        existing = cls.objects.filter(owner=user, parent=None, name='root').first()
+        if existing:
+            return existing
+
+        if isinstance(password, str):
+            password = password.encode()
+
+        crypto = CryptoTools()
+
+        # Derive a KEK for this user's folder tree
+        nc, _ = NeutronCore.objects.get_or_create(kek=user)
+        kek = nc.DeriveKek(password)
+
+        # Derive root DEK
+        raw_kek = crypto.Sha256(password)
+        salt = crypto.RandomNumber(32)
+        raw_dek = crypto.Sha256(salt + raw_kek)
+
+        crypto.nonce = None
+        wrapped_dek = crypto.AesEncryptEAX(raw_dek, raw_kek)
+        dek_nonce_b64 = b64encode(crypto.nonce).decode()
+
+        dek = DEK(
+            result_wrappedDek=b64encode(wrapped_dek).decode(),
+            result_SALT=b64encode(salt).decode(),
+            result_wrapped_nonce=b64encode(crypto.nonce).decode(),
+        )
+        dek.save()
+        dek.kek_to_retrieve.add(kek)
+
+        secure_erase_bytes(raw_dek)
+        secure_erase_bytes(raw_kek)
+
+        root = cls.objects.create(
+            name='root',
+            slug='root',
+            parent=None,
+            owner=user,
+            kek=kek,
+            dek=dek,
+            dek_nonce=dek_nonce_b64,
+        )
+
+        # Create default subfolders, each with its own DEK
+        default_folders = ['journal', 'projects', 'music', 'files', 'inbox']
+        for folder_name in default_folders:
+            cls.create_subfolder(
+                parent=root,
+                name=folder_name,
+                password=password,
+            )
+
+        return root
+
+    @classmethod
+    def create_subfolder(cls, parent, name, password):
+        """
+        Create a subfolder under parent with its own DEK,
+        sharing the parent's KEK.
+        """
+        from django.utils.text import slugify
+
+        if isinstance(password, str):
+            password = password.encode()
+
+        crypto = CryptoTools()
+        raw_kek = crypto.Sha256(password)
+        salt = crypto.RandomNumber(32)
+        raw_dek = crypto.Sha256(salt + raw_kek)
+
+        crypto.nonce = None
+        wrapped_dek = crypto.AesEncryptEAX(raw_dek, raw_kek)
+        dek_nonce_b64 = b64encode(crypto.nonce).decode()
+
+        dek = DEK(
+            result_wrappedDek=b64encode(wrapped_dek).decode(),
+            result_SALT=b64encode(salt).decode(),
+            result_wrapped_nonce=b64encode(crypto.nonce).decode(),
+        )
+        dek.save()
+        dek.kek_to_retrieve.add(parent.kek)
+
+        secure_erase_bytes(raw_dek)
+        secure_erase_bytes(raw_kek)
+
+        folder = cls.objects.create(
+            name=name,
+            slug=slugify(name),
+            parent=parent,
+            owner=parent.owner,
+            kek=parent.kek,
+            dek=dek,
+            dek_nonce=dek_nonce_b64,
+        )
+        return folder
 
 
 class SecureNote(models.Model):

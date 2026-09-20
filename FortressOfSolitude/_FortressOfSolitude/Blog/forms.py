@@ -6,6 +6,7 @@ Proof of Concept code, No liabilities or warranties expressed or implied.
 from django import forms
 from django.contrib.auth import get_user
 from django.contrib.auth.models import AnonymousUser
+from ckeditor.widgets import CKEditorWidget
 
 from .models import Post, SecureDataAtRestPost, SecureDataAtRestPostPublic
 from _FortressOfSolitude.organizer.models import SecureNote
@@ -34,6 +35,9 @@ class SecurePostForm(forms.ModelForm):
     class Meta:
         model = SecureDataAtRestPost
         exclude = ('author',)
+        widgets = {
+            'secure_text': CKEditorWidget(),
+        }
 
     def clean_slug(self):
         return self.cleaned_data['slug'].lower()

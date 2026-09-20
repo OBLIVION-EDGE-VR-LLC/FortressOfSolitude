@@ -6,8 +6,21 @@ Proof of Concept code, No liabilities or warranties expressed or implied.
 
 from django import forms
 from django.core.exceptions import ValidationError
-from .models import NewsLink, Startup, Tag, Tasking, Librarian
+from .models import NewsLink, Startup, Tag, Tasking, Librarian, UserFolder
 from datetime import datetime
+
+
+class MultipleFileInput(forms.FileInput):
+    """FileInput subclass that allows multiple file selection."""
+
+    def __init__(self, attrs=None):
+        # Bypass parent __init__ check by going directly to Widget.__init__
+        forms.Widget.__init__(self, attrs)
+        if self.attrs.get('multiple') is None:
+            self.attrs['multiple'] = True
+
+    def value_from_datadict(self, data, files, name):
+        return files.getlist(name)
 
 class NewsLinkForm(forms.ModelForm):
     class Meta:
@@ -69,7 +82,17 @@ class TaskingForm(SlugCleanMixin, forms.ModelForm):
     def clean_name(self):
         return self.cleaned_data['name'].lower()
 
-class UploadFileForm(SlugCleanMixin,forms.Form):
+class UploadFileForm(SlugCleanMixin, forms.Form):
     title = forms.CharField(max_length=32)
     file = forms.FileField()
-    file_field = forms.FileField(widget=forms.ClearableFileInput(attrs={'multiple': False}))
+    file_field = forms.FileField(widget=MultipleFileInput())
+    folder = forms.ModelChoiceField(
+        queryset=UserFolder.objects.none(),
+        required=False,
+        empty_label='(No folder)',
+    )
+
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if user is not None:
+            self.fields['folder'].queryset = UserFolder.objects.filter(owner=user)

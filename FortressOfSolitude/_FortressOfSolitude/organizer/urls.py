@@ -11,7 +11,7 @@ from django.contrib.auth.decorators import login_required
 from .views import tag_detail, tasking_detail, TagCreate, TaskingCreate, \
     UploadFile, TaskingList, TagList, TaskingUpdate, SuccessView, DownloadImageList, \
     DownloadTheGoodsView, DownloadMusicList, DownloadTheMusicalGoodsView, DownloadMiscList, \
-    DownloadTheMescalineView  # , task_status
+    DownloadTheMescalineView, FolderBrowserView, CreateSubfolderView  # , task_status
 
 urlpatterns = [
                   re_path(r'^$',
@@ -61,7 +61,16 @@ urlpatterns = [
                       {'document_root': settings.MEDIA_ROOT}),
                   re_path(r'^download/misc/media/otherfiles/(?P<pk>\d+)$',
                       login_required(DownloadTheMescalineView.as_view()),
-                      {'document_root': settings.MEDIA_ROOT})
+                      {'document_root': settings.MEDIA_ROOT}),
+                  re_path(r'^folders/$',
+                      login_required(FolderBrowserView.as_view()),
+                      name='organizer_folder_root'),
+                  re_path(r'^folders/(?P<pk>\d+)/$',
+                      login_required(FolderBrowserView.as_view()),
+                      name='organizer_folder_detail'),
+                  re_path(r'^folders/(?P<pk>\d+)/create/$',
+                      login_required(CreateSubfolderView.as_view()),
+                      name='organizer_folder_create_sub'),
                   # re_path(r'^download/(?P<path>.*)$', serve, { 'document_root': settings.STATIC_ROOT}),
                   # re_path(r'^(?P<task_id>[\w-]+)/$', task_status, name='task_status')
               ] + static('/media/', document_root=settings.MEDIA_ROOT)

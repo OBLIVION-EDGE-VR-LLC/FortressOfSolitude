@@ -16,7 +16,7 @@ from django.views.generic import (FormView, ListView, View)
 from _FortressOfSolitude.NeutrinoKey.decorators import custom_login_required
 from .utils import CreateView
 from _FortressOfSolitude.superhero.decorators import require_authenticated_permission
-from _FortressOfSolitude.organizer.models import (ImageFile, MusicFile, MiscFile, Gor_El)
+from _FortressOfSolitude.organizer.models import (ImageFile, MusicFile, MiscFile, Gor_El, UserFolder)
 from _FortressOfSolitude.core.utils import UpdateView
 from _FortressOfSolitude.organizer.utils import StartupContextMixin
 
@@ -303,45 +303,41 @@ class UploadFile(FormView):  # CreateView
     template_name = 'organizer/upload.html'
     success_url = reverse_lazy('organizer_upload_success')
 
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['user'] = self.request.user
+        return kwargs
+
     def post(self, request, *args, **kwargs):
         self.object = None
-        form = self.form_class(request)
-        file = request.FILES.getlist('file')
+        form = self.form_class(request.POST, request.FILES, user=request.user)
         filez = request.FILES.getlist('file_field')
         total_work = len(filez)
         print(f"Number of Files uploaded: {total_work}")
-        i = 0
-        if form.is_valid:
-            for f in filez:
 
-                ####generate AES-KEY pwd protect with password
-                ####TODO: Encrypt
-                print(str(f))
-                # task_status(i, total_work)
-                if str(f).lower().endswith(('.png', '.jpg', '.jpeg', '.tiff')):
-                    print("storing file: " + str(f))
-                    enc = handle_image_uploaded_file(ImageFile(f), request)  # create temporary file
-                    # Just a test here to see if we can decrypt everything using print statements:
-                    print(dir(enc))
-                    # handle_downloaded_file(enc, request, i, total_work)
-                elif str(f).lower().endswith(('.mp3', '.flac', '.aac', '.m4p', '.m4a')):
-                    print("storing file: " + str(f))
-                    enc = handle_music_uploaded_file(MusicFile(f), request)  # create temporary file
-                    # make sure we can decrypt in this case
-                    # enc = handle_music_uploaded_file(enc, request)  # Take out before final production
-                    # View output form to make sure that everythign was outputted correctly i.e. no encryption or decryption error
-                    print(dir(enc))
-                else:
-                    print("storing file: " + str(f))
-                    enc = handle_misc_uploaded_file(MiscFile(f), request)
-                    # make sure we can decrypt in this case
-                    # enc = handle_misc_uploaded_file(enc, request)  # Take out before final production
-                    # View output form to make sure that everything was outputted correctly i.e. no encryption or decryption error
-                    print(dir(enc))
-                i += 1
-            return self.form_valid(form)
-        else:
-            return self.form_invalid(form)
+        selected_folder = None
+        if form.is_valid():
+            selected_folder = form.cleaned_data.get('folder')
+
+        i = 0
+        for f in filez:
+            print(str(f))
+            if str(f).lower().endswith(('.png', '.jpg', '.jpeg', '.tiff')):
+                print("storing file: " + str(f))
+                enc = handle_image_uploaded_file(ImageFile(f), request)
+            elif str(f).lower().endswith(('.mp3', '.flac', '.aac', '.m4p', '.m4a')):
+                print("storing file: " + str(f))
+                enc = handle_music_uploaded_file(MusicFile(f), request)
+            else:
+                print("storing file: " + str(f))
+                enc = handle_misc_uploaded_file(MiscFile(f), request)
+
+            if enc and selected_folder:
+                enc.folder = selected_folder
+                enc.save()
+            i += 1
+
+        return self.form_valid(form) if form.is_valid() else self.form_invalid(form)
 
     @method_decorator(login_required)
     def dispatch(self, request, *args, **kwargs):
@@ -406,6 +402,66 @@ def handle_uploaded_file(f, request):
     # with open(f., 'wb+') as destination:
     #    for chunk in f.chunks():
     #        destination.write(chunk)
+
+
+class FolderBrowserView(View):
+    """Browse a user's encrypted folder hierarchy."""
+
+    @method_decorator(login_required)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
+
+    def get(self, request, pk=None):
+        if pk is None:
+            # Show root folder
+            folder = UserFolder.objects.filter(
+                owner=request.user, parent=None, name='root'
+            ).first()
+            if folder is None:
+                # User has no folders yet — create them
+                folder = UserFolder.create_root_for_user(
+                    request.user, request.user.password.encode()
+                )
+        else:
+            folder = get_object_or_404(
+                UserFolder, pk=pk, owner=request.user
+            )
+
+        children = folder.get_children()
+        breadcrumbs = folder.get_breadcrumbs()
+
+        # Get files in this folder (all types)
+        image_files = ImageFile.objects.filter(folder=folder)
+        music_files = MusicFile.objects.filter(folder=folder)
+        misc_files = MiscFile.objects.filter(folder=folder)
+
+        return render(request, 'organizer/folder_browser.html', {
+            'folder': folder,
+            'children': children,
+            'breadcrumbs': breadcrumbs,
+            'image_files': image_files,
+            'music_files': music_files,
+            'misc_files': misc_files,
+        })
+
+
+class CreateSubfolderView(View):
+    """Create a subfolder inside an existing folder."""
+
+    @method_decorator(login_required)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
+
+    def post(self, request, pk):
+        parent = get_object_or_404(UserFolder, pk=pk, owner=request.user)
+        folder_name = request.POST.get('folder_name', '').strip()
+        if folder_name:
+            UserFolder.create_subfolder(
+                parent=parent,
+                name=folder_name,
+                password=request.user.password.encode(),
+            )
+        return redirect('organizer_folder_detail', pk=parent.pk)
 
 
 # @task

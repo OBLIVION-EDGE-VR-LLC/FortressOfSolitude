@@ -18,7 +18,12 @@ def getSecureNote(context, secure_note):
     secure_note = context['object']
     request = context['request']
     gor_el = Gor_El()
-    return gor_el._decrypt_text(secure_note, request)
+    result = gor_el._decrypt_text(secure_note, request)
+    if result is None:
+        return ''
+    if isinstance(result, bytes):
+        return result.decode('utf-8', errors='replace')
+    return result
 
 
 @register.filter(name='decrypt_text', takes_context=True)

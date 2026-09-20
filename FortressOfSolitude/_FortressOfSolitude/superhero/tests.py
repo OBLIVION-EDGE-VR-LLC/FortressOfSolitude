@@ -59,3 +59,30 @@ class RegistrationKeyPairTest(TestCase):
         keypair = UserKeyPair.objects.get(user=user)
         priv_pem = keypair.get_private_key(raw_password.encode())
         self.assertIn(b'BEGIN RSA PRIVATE KEY', priv_pem)
+
+
+class RegistrationFolderTest(TestCase):
+    """Test that user registration creates folder hierarchy."""
+
+    def test_new_user_gets_folder_tree(self):
+        """Registration creates root folder with default subfolders."""
+        from _FortressOfSolitude.superhero.forms import DailyPlanetSubscriber
+        from _FortressOfSolitude.organizer.models import UserFolder
+
+        form_data = {
+            'email': 'barry@starlab.com',
+            'first_name': 'Barry',
+            'last_name': 'Allen',
+            'password1': 'sp33dst3r_2022!',
+            'password2': 'sp33dst3r_2022!',
+        }
+        form = DailyPlanetSubscriber(data=form_data)
+        self.assertTrue(form.is_valid(), form.errors)
+        user = form.save()
+
+        self.assertTrue(
+            UserFolder.objects.filter(owner=user, parent=None, name='root').exists()
+        )
+        root = UserFolder.objects.get(owner=user, parent=None)
+        children = UserFolder.objects.filter(parent=root)
+        self.assertEqual(children.count(), 5)

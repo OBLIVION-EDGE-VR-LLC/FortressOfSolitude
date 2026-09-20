@@ -1,0 +1,72 @@
+{% extends "organizer/base.html" %}
+{% load static %}
+
+{% block title %}
+    {{ block.super }} - {{ folder.name }}
+{% endblock %}
+
+{% block content %}
+<article>
+    <!-- Breadcrumb Navigation -->
+    <nav class="breadcrumbs">
+        {% for crumb in breadcrumbs %}
+            {% if not forloop.last %}
+                <a href="{% url 'organizer_folder_detail' crumb.pk %}">{{ crumb.name }}</a>
+                <span>/</span>
+            {% else %}
+                <strong>{{ crumb.name }}</strong>
+            {% endif %}
+        {% endfor %}
+    </nav>
+
+    <h2>{{ folder.name }}</h2>
+
+    <!-- Subfolders -->
+    {% if children %}
+    <section class="folder-list">
+        <h3>Folders</h3>
+        <ul>
+            {% for child in children %}
+            <li>
+                <a href="{% url 'organizer_folder_detail' child.pk %}">
+                    &#128193; {{ child.name }}
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+    </section>
+    {% endif %}
+
+    <!-- Files in this folder -->
+    {% if image_files or music_files or misc_files %}
+    <section class="file-list">
+        <h3>Files</h3>
+        <ul>
+            {% for f in image_files %}
+            <li>&#128247; {{ f.image_file.name }}</li>
+            {% endfor %}
+            {% for f in music_files %}
+            <li>&#127925; {{ f.image_file.name }}</li>
+            {% endfor %}
+            {% for f in misc_files %}
+            <li>&#128196; {{ f.image_file.name }}</li>
+            {% endfor %}
+        </ul>
+    </section>
+    {% endif %}
+
+    {% if not children and not image_files and not music_files and not misc_files %}
+    <p>This folder is empty.</p>
+    {% endif %}
+
+    <!-- Create Subfolder Form -->
+    <section class="create-folder">
+        <h3>Create Subfolder</h3>
+        <form method="post" action="{% url 'organizer_folder_create_sub' folder.pk %}">
+            {% csrf_token %}
+            <input type="text" name="folder_name" placeholder="New folder name" required maxlength="128" />
+            <button type="submit">Create</button>
+        </form>
+    </section>
+</article>
+{% endblock %}

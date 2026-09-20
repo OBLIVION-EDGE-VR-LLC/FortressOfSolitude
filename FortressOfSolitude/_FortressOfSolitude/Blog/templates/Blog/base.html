@@ -59,6 +59,7 @@
             <a href="{% url 'organizer_tag_list' %}">Tags</a>
             <a href="{% url 'organizer_tasking_list' %}">Tasks</a>
             <a href="{% url 'organizer_upload_create' %}">Upload</a>
+            <a href="{% url 'organizer_folder_root' %}">Folders</a>
             <a href="{% url 'organizer_download_pull' %}">Photos</a>
             <a href="{% url 'organizer_music_download_pull' %}">Music</a>
             <a href="{% url 'organizer_misc_download_pull' %}">Files</a>
@@ -100,10 +101,10 @@
 <section class="status row">
     <div class="status-controls">
         {% if user.is_authenticated %}
-            <a class="auth-button"
-               href="{% url 'dj-auth:logout' %}?next={{ request.path }}">
-                Log Out
-            </a>
+            <form method="post" action="{% url 'dj-auth:logout' %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="auth-button">Log Out</button>
+            </form>
         {% else %}
             <a class="auth-button"
                href="{% url 'dj-auth:login' %}?next={{ request.path }}">

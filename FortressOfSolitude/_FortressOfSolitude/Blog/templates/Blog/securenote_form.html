@@ -11,6 +11,7 @@
           action="{% url 'blog_securepost_create' %}"
           method="post">
         {% csrf_token %}
+        {{ form.media }}
         {{ form.as_p }}
         <button type="submit">
           Create SecureNote</button>
