@@ -6,37 +6,39 @@ Proof of Concept code, No liabilities or warranties expressed or implied.
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-from django.contrib.auth.decorators import permission_required
-from django.utils.decorators import method_decorator
-from django.views.generic import (ListView)
+from django.contrib.auth import get_user_model
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
 
-from decorators import require_authenticated_permission
-from .forms import DownloadFileForm
+from .models import UserKeyPair
 
-
-# Create your views here.
-
-@require_authenticated_permission(
-    'Blog.view_post')
-class DownloadFile(ListView):
-    form_class = DownloadFileForm
-    template_name = 'organizer/download.html'
-
-    @method_decorator(permission_required('NeutrinoKey.view_download', login_url='/login/', raise_exception=True))
-    @require_authenticated_permission('NeutrinoKey.can_download')
-    def download(self, request, *args, **kwargs):
-        if form.isValid():
-            filename = os.path.basename(self.url)
-            r = requests.get(self.url, stream=True)
-            response['Content-Disposition'] = f'attachment; filename={filename}'
-            return response
-        if form.isValid():
-            for f in files:
-                ####generate AES-KEY pwd protect with password
-                ####TODO: Encrypt
-                pass
-            return self.form_valid(form)
-        else:
-            return self.form_invalid(form)
+User = get_user_model()
 
 
+@login_required
+def public_key_lookup(request):
+    """
+    Look up a user's public key by email.
+    Returns JSON with the PEM-encoded public key, or 404 if not found.
+    Does NOT expose user lists — accepts an email, returns key or 404.
+    """
+    email = request.GET.get('email')
+    if not email:
+        return JsonResponse(
+            {'error': 'email parameter is required'},
+            status=400,
+        )
+
+    try:
+        target_user = User.objects.get(email=email)
+        keypair = UserKeyPair.objects.get(user=target_user)
+    except (User.DoesNotExist, UserKeyPair.DoesNotExist):
+        return JsonResponse(
+            {'error': 'not found'},
+            status=404,
+        )
+
+    return JsonResponse({
+        'public_key': keypair.public_key_pem,
+        'email': target_user.email,
+    })

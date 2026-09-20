@@ -18,3 +18,13 @@ Including another URLconf
     1. Import the include() function: from django.conf.urls import url, include
     2. Add a URL to urlpatterns:  url(r'^blog/', include('blog.urls'))
 """
+
+from django.urls import path
+
+from . import views
+
+app_name = 'neutrinokey'
+
+urlpatterns = [
+    path('public/', views.public_key_lookup, name='public_key_lookup'),
+]

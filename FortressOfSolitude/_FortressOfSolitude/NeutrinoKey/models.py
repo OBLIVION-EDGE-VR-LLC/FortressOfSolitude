@@ -483,6 +483,9 @@ class NeutronMatterCollector(models.Model):
 
     def DeriveDek(self, password):
         crypto = CryptoTools()
+        # Ensure this NeutronMatterCollector is saved before using M2M fields
+        if self.pk is None:
+            self.save()
         if isinstance(NeutronMatterCollector.kekForDek, KEK):
             if password != None and isinstance(password, str):
                 # Generate DEK based off this formula sha256(256 bit SALT + KEK)
@@ -509,22 +512,15 @@ class NeutronMatterCollector(models.Model):
                     DerivedDek = crypto.Sha256(
                         bytes(self.SALT) + crypto.AesDecryptEAX(b64decode(self.kekForDek.result_wrapped_kek),
                                                                 crypto.Sha256(bytes(password.encode()))))
-                    # self.dekgenerator.id.set(self.request.user)
 
                     dek = DerivedDek
-                    # newkey = DEK()
-                    # newkey.dek = dek
-                    # dek = DEK.wrap_key(newkey, kek=self.kekForDek, password=password.encode())
                     dek = crypto.AesEncryptEAX(dek, crypto.Sha256(
                         crypto.AesDecryptEAX(b64decode(self.kekForDek.result_wrapped_kek),
                                              crypto.Sha256(bytes(password.encode())))))
                     newDek = DEK(result_wrappedDek=b64encode(dek), result_SALT=b64encode(self.SALT),
-                                 result_wrapped_nonce=b64encode(crypto.nonce), id=self.id)
-                    # newDek.kek_to_retrieve.set(self.dekgenerator)
-                    # self.time_generated = models.DateTimeField('date integrated', auto_now_add=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-                    # self.save()
+                                 result_wrapped_nonce=b64encode(crypto.nonce))
                     newDek.save()
-                    self.dekgenerator.set((newDek.dek,))
+                    self.dekgenerator.set([newDek])
                     self.save()
                     return newDek
 
@@ -699,6 +695,190 @@ class RSAKey(models.Model):
         )
 
         return plaintext.decode()
+
+
+class UserKeyPair(models.Model):
+    """
+    Links an RSA-4096 key pair to a user.
+    The public key is stored as cleartext PEM (it is public by definition).
+    The private key is encrypted with AES-256-EAX via the user's KEK/DEK chain.
+    """
+    user = models.OneToOneField(
+        get_user_model(),
+        on_delete=models.CASCADE,
+        related_name='keypair',
+    )
+    public_key_pem = models.TextField(
+        help_text='RSA-4096 public key in PEM format (cleartext)',
+    )
+    encrypted_private_key = models.BinaryField(
+        help_text='RSA-4096 private key encrypted with AES-256-EAX',
+    )
+    private_key_nonce = models.CharField(
+        max_length=128,
+        help_text='Base64-encoded AES-EAX nonce for private key encryption',
+    )
+    kek = models.ForeignKey(
+        KEK,
+        on_delete=models.PROTECT,
+        related_name='user_keypairs',
+    )
+    dek = models.ForeignKey(
+        DEK,
+        on_delete=models.PROTECT,
+        related_name='user_keypairs',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'user key pair'
+        verbose_name_plural = 'user key pairs'
+
+    def __str__(self):
+        return 'KeyPair for {}'.format(self.user.email)
+
+    @classmethod
+    def generate_for_user(cls, user, password):
+        """
+        Generate an RSA-4096 key pair for a user.
+        The private key is encrypted under a fresh KEK/DEK derived from
+        the user's password. The public key is stored as cleartext PEM.
+
+        Key derivation:
+          raw_kek = SHA256(password)            — 32-byte wrapping key
+          wrapped_kek = AES-EAX(password, raw_kek)  stored in KEK row
+          salt = random 32 bytes
+          raw_dek = SHA256(salt + raw_kek)      — 32-byte data key
+          wrapped_dek = AES-EAX(raw_dek, raw_kek)  stored in DEK row
+
+        Args:
+            user: The User model instance.
+            password: bytes or str — the user's raw password.
+
+        Returns:
+            UserKeyPair instance (saved to DB).
+        """
+        from Crypto.PublicKey import RSA as RSAGen
+
+        # Ensure password is bytes
+        if isinstance(password, str):
+            password = password.encode()
+
+        # Generate RSA-4096 key pair
+        rsa_key = RSAGen.generate(4096)
+        private_key_pem = rsa_key.export_key(format='PEM')
+        public_key_pem = rsa_key.publickey().export_key(format='PEM')
+
+        # --- Derive KEK ---
+        # raw_kek is always 32 bytes (SHA-256 digest)
+        kek_crypto = CryptoTools()
+        raw_kek = kek_crypto.Sha256(password)                          # 32 bytes
+        wrapped_kek_bytes = kek_crypto.AesEncryptEAX(password, raw_kek)
+        kek = KEK(
+            result_wrapped_kek=b64encode(wrapped_kek_bytes),
+            result_wrapped_nonce=b64encode(kek_crypto.nonce),
+        )
+        kek.save()
+
+        # --- Derive DEK from KEK ---
+        dek_crypto = CryptoTools()
+        salt = dek_crypto.RandomNumber(32)
+        raw_dek = dek_crypto.Sha256(bytes(salt) + raw_kek)             # 32 bytes
+        # Use the kek nonce for consistency with how unwrap_key works later
+        dek_crypto.nonce = kek_crypto.nonce
+        wrapped_dek_bytes = dek_crypto.AesEncryptEAX(raw_dek, raw_kek)
+        dek = DEK(
+            result_wrappedDek=b64encode(wrapped_dek_bytes),
+            result_SALT=salt,
+            result_wrapped_nonce=b64encode(dek_crypto.nonce),
+        )
+        dek.save()
+        dek.kek_to_retrieve.add(kek)
+        dek.save()
+
+        # --- Encrypt the private key PEM with AES-EAX using raw_dek ---
+        enc_crypto = CryptoTools()
+        encrypted_priv = enc_crypto.AesEncryptEAX(private_key_pem, enc_crypto.Sha256(raw_dek))
+        nonce_b64 = b64encode(enc_crypto.nonce).decode()
+
+        # Securely erase raw key material before saving
+        secure_erase_bytes(raw_kek)
+        secure_erase_bytes(raw_dek)
+        secure_erase_bytes(bytearray(private_key_pem))
+
+        keypair = cls.objects.create(
+            user=user,
+            public_key_pem=public_key_pem.decode(),
+            encrypted_private_key=encrypted_priv,
+            private_key_nonce=nonce_b64,
+            kek=kek,
+            dek=dek,
+        )
+        return keypair
+
+    def get_private_key(self, password):
+        """
+        Decrypt and return the raw private key PEM bytes.
+        CALLER IS RESPONSIBLE for calling secure_erase_bytes() on the result.
+
+        Uses the same derivation path as generate_for_user:
+          raw_kek = SHA256(password)
+          raw_dek = AES-EAX-decrypt(wrapped_dek, raw_kek) using stored nonce
+
+        Args:
+            password: bytes or str — the user's raw password.
+
+        Returns:
+            bytes — the decrypted private key in PEM format.
+        """
+        if isinstance(password, str):
+            password = password.encode()
+
+        # Re-derive raw_kek from password (same formula as generate_for_user)
+        kek_crypto = CryptoTools()
+        raw_kek = kek_crypto.Sha256(password)                          # 32 bytes
+
+        # Unwrap DEK using raw_kek and stored nonce
+        dek_crypto = CryptoTools()
+        dek_nonce_raw = self.dek.result_wrapped_nonce
+        if isinstance(dek_nonce_raw, str):
+            dek_nonce_b = dek_nonce_raw.encode().replace(b"b'", b'').rstrip(b"'")
+            dek_nonce_b = dek_nonce_b + b'=' * (len(dek_nonce_b) % 4)
+        else:
+            dek_nonce_b = dek_nonce_raw
+        dek_crypto.nonce = b64decode(dek_nonce_b)
+
+        dek_wrapped_raw = self.dek.result_wrappedDek
+        if isinstance(dek_wrapped_raw, str):
+            dek_wrapped_b = dek_wrapped_raw.encode().replace(b"b'", b'').rstrip(b"'")
+            dek_wrapped_b = dek_wrapped_b + b'=' * (len(dek_wrapped_b) % 4)
+        else:
+            dek_wrapped_b = dek_wrapped_raw
+        raw_dek = dek_crypto.AesDecryptEAX(b64decode(dek_wrapped_b), raw_kek)
+
+        if raw_dek is None:
+            secure_erase_bytes(raw_kek)
+            raise ValueError('Failed to unwrap DEK — wrong password or corrupted key')
+
+        # Decrypt private key using stored nonce
+        enc_crypto = CryptoTools()
+        enc_crypto.nonce = b64decode(self.private_key_nonce)
+        private_key_pem = enc_crypto.AesDecryptEAX(
+            bytes(self.encrypted_private_key),
+            enc_crypto.Sha256(raw_dek),
+        )
+
+        # Erase raw key material
+        secure_erase_bytes(raw_kek)
+        secure_erase_bytes(raw_dek)
+
+        return private_key_pem
+
+    def get_public_key(self):
+        """
+        Return the public key PEM bytes (cleartext, no decryption needed).
+        """
+        return self.public_key_pem.encode()
 
 
 def secure_erase_bytes(bytes_data) -> bytes:

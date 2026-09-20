@@ -4,7 +4,7 @@ Proof of Concept code, No liabilities or warranties expressed or implied.
 '''
 
 from django.conf import settings
-from django.conf.urls import url
+from django.urls import re_path
 from django.conf.urls.static import static
 from django.contrib.auth.decorators import login_required
 
@@ -14,54 +14,54 @@ from .views import tag_detail, tasking_detail, TagCreate, TaskingCreate, \
     DownloadTheMescalineView  # , task_status
 
 urlpatterns = [
-                  url(r'^$',
+                  re_path(r'^$',
                       login_required(TagList.as_view()),
                       name='organizer_tag_list'),
-                  url(r'^tag/create/$',
+                  re_path(r'^tag/create/$',
                       login_required(TagCreate.as_view()),
                       name='organizer_tag_create'),
-                  url(r'^tasking/create/$',
+                  re_path(r'^tasking/create/$',
                       login_required(TaskingCreate.as_view()),
                       name='organizer_tasking_create'),
-                  url(r'^tag/(?P<slug>[\w\-]+)/$',
+                  re_path(r'^tag/(?P<slug>[\w\-]+)/$',
                       tag_detail,
                       name='organizer_tag_detail'),
-                  url(r'^tasking/(?P<slug>[\w\-]+)/$',
+                  re_path(r'^tasking/(?P<slug>[\w\-]+)/$',
                       tasking_detail,
                       name='organizer_tasking_detail'),
-                  url(r'^create/$',
+                  re_path(r'^create/$',
                       login_required(TagCreate.as_view()),
                       name='organizer_tag_create'),
-                  url(r'^upload/create/$',
+                  re_path(r'^upload/create/$',
                       login_required(UploadFile.as_view()),
                       name='organizer_upload_create'),
-                  url(r'^upload/create/uploadsuccess/$',
+                  re_path(r'^upload/create/uploadsuccess/$',
                       login_required(SuccessView.as_view()),
                       name='organizer_upload_success'),
-                  url(r'^tasking/$',
+                  re_path(r'^tasking/$',
                       login_required(TaskingList.as_view()),
                       name='organizer_tasking_list'),
-                  url(r'^(?P<slug>[\w\-]+)/update/$',
+                  re_path(r'^(?P<slug>[\w\-]+)/update/$',
                       login_required(TaskingUpdate.as_view()),
                       name='organizer_tasking_update'),
-                  url(r'^download/$',
+                  re_path(r'^download/$',
                       login_required(DownloadImageList.as_view()),
                       name='organizer_download_pull'),
-                  url(r'^download/music/$',
+                  re_path(r'^download/music/$',
                       login_required(DownloadMusicList.as_view()),
                       name='organizer_music_download_pull'),
-                  url(r'^download/misc/$',
+                  re_path(r'^download/misc/$',
                       login_required(DownloadMiscList.as_view()),
                       name='organizer_misc_download_pull'),
-                  url('^download/media/photos/(?P<pk>\d+)$',
+                  re_path(r'^download/media/photos/(?P<pk>\d+)$',
                       login_required(DownloadTheGoodsView.as_view()),
                       {'document_root': settings.MEDIA_ROOT}),
-                  url('^download/music/media/music/(?P<pk>\d+)$',
+                  re_path(r'^download/music/media/music/(?P<pk>\d+)$',
                       login_required(DownloadTheMusicalGoodsView.as_view()),
                       {'document_root': settings.MEDIA_ROOT}),
-                  url('^download/misc/media/otherfiles/(?P<pk>\d+)$',
+                  re_path(r'^download/misc/media/otherfiles/(?P<pk>\d+)$',
                       login_required(DownloadTheMescalineView.as_view()),
                       {'document_root': settings.MEDIA_ROOT})
                   # re_path(r'^download/(?P<path>.*)$', serve, { 'document_root': settings.STATIC_ROOT}),
-                  # url(r'^(?P<task_id>[\w-]+)/$', task_status, name='task_status')
+                  # re_path(r'^(?P<task_id>[\w-]+)/$', task_status, name='task_status')
               ] + static('/media/', document_root=settings.MEDIA_ROOT)

@@ -53,8 +53,16 @@
 
         <!-- Right: Primary modules -->
         <div class="nav-right">
+            {% if user.is_authenticated %}
+            <a href="{% url 'blog_post_list' %}">Blog</a>
+            <a href="{% url 'blog_securepost_list' %}">Secure Notes</a>
             <a href="{% url 'organizer_tag_list' %}">Tags</a>
             <a href="{% url 'organizer_tasking_list' %}">Tasks</a>
+            <a href="{% url 'organizer_upload_create' %}">Upload</a>
+            <a href="{% url 'organizer_download_pull' %}">Photos</a>
+            <a href="{% url 'organizer_music_download_pull' %}">Music</a>
+            <a href="{% url 'organizer_misc_download_pull' %}">Files</a>
+            {% endif %}
             <a href="{% url 'blog_securepost_public_list' %}">Research</a>
         </div>
 

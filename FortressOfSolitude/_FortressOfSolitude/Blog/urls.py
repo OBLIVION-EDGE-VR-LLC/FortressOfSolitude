@@ -3,7 +3,7 @@ DBA 1337_TECH, AUSTIN TEXAS © MAY 2021
 Proof of Concept code, No liabilities or warranties expressed or implied.
 """
 
-from django.conf.urls import url
+from django.urls import re_path
 
 from .views import (PostCreate,
                     PostDelete, PostDetail, PostList, PostUpdate, PostArchiveYear, PostArchiveMonth, SecurePostList,
@@ -14,36 +14,36 @@ from .views import (PostCreate,
                     PublicSecurePostArchiveMonth)
 
 urlpatterns = [
-    url(r'^Securelist/$',
+    re_path(r'^Securelist/$',
         SecurePostList.as_view(),
         name='blog_securepost_list'),
-    url(r'^$',
+    re_path(r'^$',
         PostList.as_view(),
         name='blog_post_list'),
-    url(r'^Securecreate/$',
+    re_path(r'^Securecreate/$',
         SecurePostCreate.as_view(),
         name='blog_securepost_create'),
-    url(r'^create/$',
+    re_path(r'^create/$',
         PostCreate.as_view(),
         name='blog_post_create'),
-    url(r'^(?P<year>\d{4})/$',
+    re_path(r'^(?P<year>\d{4})/$',
         PostArchiveYear.as_view(),
         name='blog_post_archive_year'),
-    url(r'^(?P<year>\d{4})/'
+    re_path(r'^(?P<year>\d{4})/'
         r'(?P<month>\d{1,2})/$',
         PostArchiveMonth.as_view(),
         name='blog_post_archive_month'),
-    url(r'^SecureNote/(?P<year>\d{4})/'
+    re_path(r'^SecureNote/(?P<year>\d{4})/'
         r'(?P<month>\d{1,2})/'
         r'(?P<slug>[\w\-]+)/$',
         SecurePostDetail.as_view(),
         name='blog_securepost_detail'),
-    url(r'^SecureNote/(?P<year>\d{4})/'
+    re_path(r'^SecureNote/(?P<year>\d{4})/'
         r'(?P<month>\d{1,2})/'
         r'(?P<slug>[\w\-]+)/$',
         SecurePostUpdate.as_view(),
         name='blog_secureNote_form_update'),
-    url(r'^SecureNote/'
+    re_path(r'^SecureNote/'
         r'(?P<year>\d{4})/'
         r'(?P<month>\d{1,2})/'
         r'(?P<slug>[\w\-]+)/'
@@ -52,31 +52,31 @@ urlpatterns = [
         name='blog_secureNote_delete'),
 
     # Public Viewable Blog
-    url(r'^PublicSecurelist/$',
+    re_path(r'^PublicSecurelist/$',
         PublicSecurePostList.as_view(),
         name='blog_securepost_public_list'),
-    url(r'^PublicSecurecreate/$',
+    re_path(r'^PublicSecurecreate/$',
         PublicSecurePostCreate.as_view(),
         name='blog_securepost_public_create'),
-    url(r'^PublicSecureNote/(?P<year>\d{4})/'
+    re_path(r'^PublicSecureNote/(?P<year>\d{4})/'
         r'(?P<month>\d{1,2})/'
         r'(?P<slug>[\w\-]+)/$',
         PublicSecurePostDetail.as_view(),
         name='blog_securepost_public_detail'),
-    url(r'^PublicSecureNote/'
+    re_path(r'^PublicSecureNote/'
         r'(?P<year>\d{4})/$',
         PublicSecurePostArchiveYear.as_view(),
         name='blog_securepost_public_archive_year'),
-    url(r'^PublicSecureNote/(?P<year>\d{4})/'
+    re_path(r'^PublicSecureNote/(?P<year>\d{4})/'
         r'(?P<month>\d{1,2})/$',
         PublicSecurePostArchiveMonth.as_view(),
         name='blog_securepost_public_archive_month'),
-    url(r'PublicSecureNoteUpdate/(?P<year>\d{4})/'
+    re_path(r'PublicSecureNoteUpdate/(?P<year>\d{4})/'
         r'(?P<month>\d{1,2})/'
         r'(?P<slug>[\w\-]+)/$',
         PublicSecurePostUpdate.as_view(),
         name='blog_securepost_public_update'),
-    url(r'^PublicSecureNote/'
+    re_path(r'^PublicSecureNote/'
         r'(?P<year>\d{4})/'
         r'(?P<month>\d{1,2})/'
         r'(?P<slug>[\w\-]+)/'
@@ -85,34 +85,34 @@ urlpatterns = [
         name='blog_securepost_public_delete'),
     # END of Public Viewable Posts
 
-    url(r'^(?P<year>\d{4})/'
+    re_path(r'^(?P<year>\d{4})/'
         r'(?P<month>\d{1,2})/'
         r'(?P<slug>[\w\-]+)/$',
         PostDetail.as_view(),
         name='blog_post_detail'),
-    url(r'^(?P<year>\d{4})/'
+    re_path(r'^(?P<year>\d{4})/'
         r'(?P<month>\d{1,2})/'
         r'(?P<slug>[\w\-]+)/'
         r'delete/$',
         PostDelete.as_view(),
         name='blog_post_delete'),
-    url(r'^(?P<year>\d{4})/'
+    re_path(r'^(?P<year>\d{4})/'
         r'(?P<month>\d{1,2})/'
         r'(?P<slug>[\w\-]+)/'
         r'Secureupdate/$',
         SecurePostUpdate.as_view(),
         name='blog_securepost_update'),
-    url(r'^(?P<year>\d{4})/'
+    re_path(r'^(?P<year>\d{4})/'
         r'(?P<month>\d{1,2})/'
         r'(?P<slug>[\w\-]+)/'
         r'update/$',
         PostUpdate.as_view(),
         name='blog_post_update'),
-    url(r'^SecureNote/'
+    re_path(r'^SecureNote/'
         r'(?P<year>\d{4})/$',
         SecurePostArchiveYear.as_view(),
         name='blog_securepost_archive_year'),
-    url(r'^SecureNote/(?P<year>\d{4})/'
+    re_path(r'^SecureNote/(?P<year>\d{4})/'
         r'(?P<month>\d{1,2})/$',
         SecurePostArchiveMonth.as_view(),
         name='blog_securepost_archive_month'),

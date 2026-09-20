@@ -24,7 +24,7 @@ Including another URLconf
 """
 
 # Uncomment next two lines to enable admin:
-from django.conf.urls import include, url
+from django.urls import include, re_path
 from django.conf.urls.static import static
 from _FortressOfSolitude.Blog import urls as blog_urls
 from _FortressOfSolitude.Blog.views import PostList
@@ -38,10 +38,11 @@ from . import settings
 urlpatterns = [
     # Uncomment the next line to enable the admin:
     path('admin/', admin.site.urls),
-    url(r'^', include(organizer_urls)),
-    url(r'^$', PostList.as_view()),
-    url(r'^superhero/', include((superhero_urls, 'superhero'), namespace='dj-auth')),
-    url(r'^blog/', include(blog_urls)),
+    re_path(r'^', include(organizer_urls)),
+    re_path(r'^$', PostList.as_view()),
+    re_path(r'^superhero/', include((superhero_urls, 'superhero'), namespace='dj-auth')),
+    re_path(r'^blog/', include(blog_urls)),
+    path('keys/', include('_FortressOfSolitude.NeutrinoKey.urls')),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 handler500 = my_500_error_view
 handler403 = my_403_forbidden_view

@@ -188,8 +188,8 @@ class Librarian(models.Manager):
         data.save()
         data_dek.save()
         data_kek.save()
-        data.data_kek = data_kek
-        data.data_dek = data_dek
+        data.data_kek.set([data_kek])
+        data.data_dek.set([data_dek])
         print("ENCRYPTED AND SAVED DATA")
         data.save()
 
