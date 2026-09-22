@@ -1,0 +1,53 @@
+{% extends "agora/base.html" %}
+
+{% block agora_title %}{{ profile.handle }}{% endblock %}
+
+{% block content %}
+<article>
+    <h2>{{ profile.handle }}</h2>
+
+    {% if profile.about_me %}
+    <section>
+        <h3>About</h3>
+        <p>{{ profile.about_me }}</p>
+    </section>
+    {% endif %}
+
+    {% if profile.favorite_movie %}
+    <p><strong>Favorite Movie:</strong> {{ profile.favorite_movie }}</p>
+    {% endif %}
+
+    {% if profile.favorite_song %}
+    <p><strong>Favorite Song:</strong> {{ profile.favorite_song }}</p>
+    {% endif %}
+
+    {% if profile.favorite_artist %}
+    <p><strong>Favorite Artist:</strong> {{ profile.favorite_artist }}</p>
+    {% endif %}
+
+    {% if profile.quote %}
+    <section>
+        <h3>Quote</h3>
+        <blockquote>{{ profile.quote }}</blockquote>
+    </section>
+    {% endif %}
+
+    {% if recent_topics %}
+    <section>
+        <h3>Recent Topics</h3>
+        <ul>
+            {% for topic in recent_topics %}
+            <li>
+                <a href="{{ topic.get_absolute_url }}">{{ topic.title }}</a>
+                &mdash; {{ topic.pub_date|date:"M d, Y" }}
+            </li>
+            {% endfor %}
+        </ul>
+    </section>
+    {% endif %}
+
+    {% if request.user == profile.user %}
+    <a href="{% url 'agora_profile_edit' %}">Edit Profile</a>
+    {% endif %}
+</article>
+{% endblock %}

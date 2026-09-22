@@ -1,0 +1,22 @@
+{% extends "agora/base.html" %}
+
+{% block agora_title %}The Agora{% endblock %}
+
+{% block content %}
+<article>
+    <h2>The Agora</h2>
+    <p>Where sovereign Fortresses meet to exchange ideas freely.</p>
+
+    <section class="category-list">
+        {% for category in categories %}
+        <div class="category-card">
+            <h3><a href="{{ category.get_absolute_url }}">{{ category.name }}</a></h3>
+            <p>{{ category.description }}</p>
+            <span>{{ category.topics.count }} topics</span>
+        </div>
+        {% endfor %}
+    </section>
+
+    <a href="{% url 'agora_profile_edit' %}">Edit Profile</a>
+</article>
+{% endblock %}

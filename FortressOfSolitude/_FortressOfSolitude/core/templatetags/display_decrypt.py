@@ -3,7 +3,7 @@ DBA 1337_TECH, AUSTIN TEXAS © MAY 2021
 Proof of Concept code, No liabilities or warranties expressed or implied.
 """
 
-from _FortressOfSolitude.organizer.models import Gor_El
+from _FortressOfSolitude.core.managers import Gor_El
 from django.template import (
     Library, TemplateSyntaxError)
 from django.template.defaultfilters import stringfilter

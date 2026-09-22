@@ -1,0 +1,17 @@
+{% extends "agora/base.html" %}
+
+{% block agora_title %}Edit Profile{% endblock %}
+
+{% block content %}
+<article>
+    <h2>Edit Your Profile</h2>
+
+    <form method="post">
+        {% csrf_token %}
+        <table>
+            {{ form.as_table }}
+        </table>
+        <button type="submit">Save Changes</button>
+    </form>
+</article>
+{% endblock %}

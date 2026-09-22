@@ -1,0 +1,18 @@
+{% extends "agora/base.html" %}
+
+{% block agora_title %}Set Up Your Agora Identity{% endblock %}
+
+{% block content %}
+<article>
+    <h2>Welcome to The Agora</h2>
+    <p>Choose your handle and tell the community a bit about yourself.</p>
+
+    <form method="post">
+        {% csrf_token %}
+        <table>
+            {{ form.as_table }}
+        </table>
+        <button type="submit">Enter The Agora</button>
+    </form>
+</article>
+{% endblock %}

@@ -31,6 +31,7 @@ from _FortressOfSolitude.Blog.views import PostList
 from _FortressOfSolitude.organizer import urls as organizer_urls
 from _FortressOfSolitude.superhero import urls as superhero_urls
 from _FortressOfSolitude.superhero.views import my_403_forbidden_view, my_500_error_view
+from _FortressOfSolitude.agora import urls as agora_urls
 from . import settings
 
 # from FortressOfSolitude._FortressOfSolitude.superhero.views import my_500_error_view
@@ -43,6 +44,7 @@ urlpatterns = [
     re_path(r'^superhero/', include((superhero_urls, 'superhero'), namespace='dj-auth')),
     re_path(r'^blog/', include(blog_urls)),
     path('keys/', include('_FortressOfSolitude.NeutrinoKey.urls')),
+    re_path(r'^agora/', include(agora_urls)),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 handler500 = my_500_error_view
 handler403 = my_403_forbidden_view

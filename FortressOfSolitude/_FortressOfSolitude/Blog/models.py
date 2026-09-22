@@ -10,8 +10,9 @@ from django.urls import reverse, reverse_lazy
 import _FortressOfSolitude.settings as settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import User
-from _FortressOfSolitude.organizer.models import Startup, Tag, Tasking, SecureNote, Librarian, SecureNotePublic
-from _FortressOfSolitude.organizer.models import SecureNote
+from _FortressOfSolitude.organizer.models import Startup, Tag, Tasking, SecureNote
+from _FortressOfSolitude.core.managers import Librarian
+from _FortressOfSolitude.core.models import SecureNotePublic
 
 
 # Create your models here.

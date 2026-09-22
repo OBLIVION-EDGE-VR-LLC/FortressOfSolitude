@@ -1,0 +1,68 @@
+{% extends "agora/base.html" %}
+{% load display_decrypt %}
+
+{% block agora_title %}{{ topic.title }}{% endblock %}
+
+{% block content %}
+<article>
+    <nav class="breadcrumbs">
+        <a href="{% url 'agora_landing' %}">The Agora</a>
+        <span>/</span>
+        <a href="{{ category.get_absolute_url }}">{{ category.name }}</a>
+        <span>/</span>
+        <strong>{{ topic.title }}</strong>
+    </nav>
+
+    <!-- Original Post -->
+    <section class="topic-post">
+        <h2>{{ topic.title }}</h2>
+        <div class="post-meta">
+            <a href="{% url 'agora_profile_detail' handle=topic.author.handle %}">
+                {{ topic.author.handle }}
+            </a>
+            — {{ topic.pub_date|date:"M d, Y H:i" }}
+            — {{ topic.view_count }} views
+        </div>
+        <div class="post-body">
+            {% decrypt_public_text topic %}
+        </div>
+    </section>
+
+    <!-- Replies -->
+    {% if replies %}
+    <section class="replies">
+        <h3>{{ replies|length }} Replies</h3>
+        {% for reply in replies %}
+        <div class="reply" style="margin-left: {{ reply.get_depth|default:0 }}em;">
+            <div class="reply-meta">
+                <a href="{% url 'agora_profile_detail' handle=reply.author.handle %}">
+                    {{ reply.author.handle }}
+                </a>
+                — {{ reply.pub_date|date:"M d, Y H:i" }}
+                {% if reply.parent %}
+                    (replying to {{ reply.parent.author.handle }})
+                {% endif %}
+            </div>
+            <div class="reply-body">
+                {{ reply.secure_text }}
+            </div>
+        </div>
+        {% endfor %}
+    </section>
+    {% endif %}
+
+    <!-- Reply Form -->
+    {% if not topic.is_locked %}
+    <section class="reply-form">
+        <h3>Post a Reply</h3>
+        <form method="post" action="{% url 'agora_reply_create' category_slug=category.slug pk=topic.pk slug=topic.slug %}">
+            {% csrf_token %}
+            <textarea name="secure_text" rows="5" required placeholder="Write your reply..."></textarea>
+            <button type="submit">Post Reply</button>
+        </form>
+    </section>
+    {% else %}
+    <p>This topic is locked. No new replies can be posted.</p>
+    {% endif %}
+</article>
+{% endblock %}

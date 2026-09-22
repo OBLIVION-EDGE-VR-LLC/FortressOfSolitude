@@ -16,7 +16,8 @@ from django.views.generic import (FormView, ListView, View)
 from _FortressOfSolitude.NeutrinoKey.decorators import custom_login_required
 from .utils import CreateView
 from _FortressOfSolitude.superhero.decorators import require_authenticated_permission
-from _FortressOfSolitude.organizer.models import (ImageFile, MusicFile, MiscFile, Gor_El, UserFolder)
+from _FortressOfSolitude.organizer.models import (ImageFile, MusicFile, MiscFile, UserFolder)
+from _FortressOfSolitude.core.managers import Gor_El
 from _FortressOfSolitude.core.utils import UpdateView
 from _FortressOfSolitude.organizer.utils import StartupContextMixin
 

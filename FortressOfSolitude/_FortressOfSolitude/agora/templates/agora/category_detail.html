@@ -1,0 +1,61 @@
+{% extends "agora/base.html" %}
+
+{% block agora_title %}{{ category.name }}{% endblock %}
+
+{% block content %}
+<article>
+    <nav class="breadcrumbs">
+        <a href="{% url 'agora_landing' %}">The Agora</a>
+        <span>/</span>
+        <strong>{{ category.name }}</strong>
+    </nav>
+
+    <h2>{{ category.name }}</h2>
+    <p>{{ category.description }}</p>
+
+    <a href="{% url 'agora_topic_create' category_slug=category.slug %}">New Topic</a>
+
+    {% if topics %}
+    <table>
+        <thead>
+            <tr>
+                <th>Topic</th>
+                <th>Author</th>
+                <th>Replies</th>
+                <th>Views</th>
+                <th>Last Activity</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for topic in topics %}
+            <tr>
+                <td>
+                    {% if topic.is_pinned %}&#128204; {% endif %}
+                    {% if topic.is_locked %}&#128274; {% endif %}
+                    <a href="{{ topic.get_absolute_url }}">{{ topic.title }}</a>
+                </td>
+                <td>
+                    <a href="{% url 'agora_profile_detail' handle=topic.author.handle %}">
+                        {{ topic.author.handle }}
+                    </a>
+                </td>
+                <td>{{ topic.get_reply_count }}</td>
+                <td>{{ topic.view_count }}</td>
+                <td>
+                    {% with last=topic.get_last_reply %}
+                        {% if last %}
+                            {{ last.pub_date|date:"M d, Y H:i" }}
+                        {% else %}
+                            {{ topic.pub_date|date:"M d, Y H:i" }}
+                        {% endif %}
+                    {% endwith %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No topics yet. Be the first to start a discussion!</p>
+    {% endif %}
+</article>
+{% endblock %}

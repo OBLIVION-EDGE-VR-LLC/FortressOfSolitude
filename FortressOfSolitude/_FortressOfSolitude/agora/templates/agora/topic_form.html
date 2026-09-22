@@ -1,0 +1,25 @@
+{% extends "agora/base.html" %}
+
+{% block agora_title %}New Topic in {{ category.name }}{% endblock %}
+
+{% block content %}
+<article>
+    <nav class="breadcrumbs">
+        <a href="{% url 'agora_landing' %}">The Agora</a>
+        <span>/</span>
+        <a href="{{ category.get_absolute_url }}">{{ category.name }}</a>
+        <span>/</span>
+        <strong>New Topic</strong>
+    </nav>
+
+    <h2>New Topic in {{ category.name }}</h2>
+
+    <form method="post">
+        {% csrf_token %}
+        <table>
+            {{ form.as_table }}
+        </table>
+        <button type="submit">Post Topic</button>
+    </form>
+</article>
+{% endblock %}
