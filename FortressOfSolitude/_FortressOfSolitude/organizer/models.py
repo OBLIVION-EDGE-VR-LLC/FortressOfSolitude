@@ -23,8 +23,6 @@ from _FortressOfSolitude.NeutrinoKey.models import secure_erase_bytes, secure_er
 from _FortressOfSolitude.NeutrinoKey.models import DEK, KEK, NeutronMatterCollector, NeutronCore, DeriveDek_default, \
     DeriveDek_from_Kek
 
-from ckeditor.fields import RichTextField
-
 from _FortressOfSolitude.core.managers import Librarian, Gor_El
 from _FortressOfSolitude.core.models import SecureNotePublic
 
@@ -151,6 +149,8 @@ class MusicFile(models.Model):
     encrypting music files and organizing into the music folder no inputs
     """
     image_file = models.FileField(storage=musicFS, default=None)
+    display_name = models.CharField(max_length=512, null=True, blank=True,
+                                    help_text='Original human-readable filename')
     data_dek = models.ForeignKey(DEK, default=1, on_delete=models.CASCADE)
     data_kek = models.ForeignKey(KEK, default=1, on_delete=models.CASCADE)
     result_nonce_file = models.CharField(max_length=128, default=b64encode(int(55).to_bytes(4, 'big')))
@@ -166,7 +166,7 @@ class MusicFile(models.Model):
         ordering = ['image_file']
 
     def __str__(self):
-        return str(self.image_file)
+        return self.display_name or str(self.image_file)
 
     def get_absolute_url(self):
         return reverse('organizer_music_download_pull', kwargs={
@@ -186,6 +186,8 @@ class ImageFile(models.Model):
     encrypting and organizing common image files common image files will be .png, .tiff, .bmp no inputs
     """
     image_file = models.FileField(storage=photoFS, default=None)
+    display_name = models.CharField(max_length=512, null=True, blank=True,
+                                    help_text='Original human-readable filename')
     data_dek = models.ManyToManyField(DEK, default=1)
     data_kek = models.ManyToManyField(KEK, default=1)
     result_nonce_file = models.CharField(max_length=128, default=b64encode(int(55).to_bytes(4, 'big')))
@@ -201,7 +203,7 @@ class ImageFile(models.Model):
         ordering = ['-image_file']
 
     def __str__(self):
-        return str(self.image_file)
+        return self.display_name or str(self.image_file)
 
     def get_absolute_url(self, **kwargs):
         if str(self.image_file) != '':
@@ -230,6 +232,8 @@ class VideoFile(models.Model):
     encrypting and organizing video files common video formats will be .mpg, .mp4, .avi, .mkv no inputs
     """
     image_file = models.FileField(storage=videoFS, default=None)
+    display_name = models.CharField(max_length=512, null=True, blank=True,
+                                    help_text='Original human-readable filename')
     data_dek = models.ManyToManyField(DEK, default=1)
     data_kek = models.ManyToManyField(KEK, default=1)
     result_nonce_file = models.CharField(max_length=128, default=b64encode(int(55).to_bytes(4, 'big')))
@@ -245,7 +249,7 @@ class VideoFile(models.Model):
         ordering = ['-image_file']
 
     def __str__(self):
-        return str(self.image_file)
+        return self.display_name or str(self.image_file)
 
     def get_absolute_url(self):
         return reverse('organizer_video_download_pull', kwargs={'image_file': str(
@@ -269,6 +273,8 @@ class MiscFile(models.Model):
     previous classes such as ImageFile, MusicFile, and VideoFile no inputs
     """
     image_file = models.FileField(storage=otherFS, default=None)
+    display_name = models.CharField(max_length=512, null=True, blank=True,
+                                    help_text='Original human-readable filename')
     data_dek = models.ForeignKey(DEK, default=1, on_delete=models.CASCADE)
     data_kek = models.ForeignKey(KEK, default=1, on_delete=models.CASCADE)
     result_nonce_file = models.CharField(max_length=128, default=b64encode(int(55).to_bytes(4, 'big')))
@@ -284,7 +290,7 @@ class MiscFile(models.Model):
         ordering = ['-image_file']
 
     def __str__(self):
-        return str(self.image_file)
+        return self.display_name or str(self.image_file)
 
     def get_absolute_url(self):
         return reverse('organizer_misc_download_pull', kwargs={

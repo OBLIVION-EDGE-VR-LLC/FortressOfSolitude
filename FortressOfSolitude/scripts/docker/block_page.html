@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Access Denied — FortressOfSolitude</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+        }
+
+        .scanlines {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 0, 0, 0.15) 0px,
+                rgba(0, 0, 0, 0.15) 1px,
+                transparent 1px,
+                transparent 3px
+            );
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .container {
+            text-align: center;
+            padding: 3rem;
+            max-width: 700px;
+            position: relative;
+            z-index: 5;
+        }
+
+        .glitch-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        .main-text {
+            font-size: 2.8rem;
+            font-weight: bold;
+            color: #ff3333;
+            text-shadow:
+                0 0 10px rgba(255, 51, 51, 0.8),
+                0 0 40px rgba(255, 51, 51, 0.4);
+            animation: flicker 3s infinite;
+            letter-spacing: 3px;
+        }
+
+        .sub-text {
+            font-size: 1.6rem;
+            color: #ff6b6b;
+            margin-top: 1rem;
+            text-shadow: 0 0 20px rgba(255, 107, 107, 0.5);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .warning-box {
+            margin-top: 2.5rem;
+            padding: 1.5rem 2rem;
+            border: 2px solid #ff3333;
+            background: rgba(255, 51, 51, 0.08);
+            border-radius: 4px;
+            font-size: 0.95rem;
+            line-height: 1.8;
+            text-align: left;
+        }
+
+        .warning-box .label {
+            color: #ff3333;
+            font-weight: bold;
+        }
+
+        .warning-box .value {
+            color: #aaa;
+        }
+
+        .ip-display {
+            margin-top: 1.5rem;
+            font-size: 0.85rem;
+            color: #555;
+        }
+
+        .skull {
+            font-size: 5rem;
+            margin-bottom: 1rem;
+            animation: bob 2s ease-in-out infinite;
+            filter: drop-shadow(0 0 20px rgba(255, 51, 51, 0.6));
+        }
+
+        .status-bar {
+            margin-top: 2rem;
+            padding: 0.8rem;
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 3px;
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .status-bar span {
+            color: #ff3333;
+        }
+
+        @keyframes flicker {
+            0%, 100% { opacity: 1; }
+            92% { opacity: 1; }
+            93% { opacity: 0.3; }
+            94% { opacity: 1; }
+            96% { opacity: 0.5; }
+            97% { opacity: 1; }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.8; }
+            50% { opacity: 1; }
+        }
+
+        @keyframes bob {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="scanlines"></div>
+    <div class="container">
+        <div class="skull">&#9760;</div>
+        <div class="glitch-wrapper">
+            <div class="main-text">NUH UH UHHHH</div>
+        </div>
+        <div class="sub-text">You Gotta Stop Hackin!</div>
+
+        <div class="warning-box">
+            <span class="label">STATUS:</span> <span class="value">REQUEST DENIED</span><br>
+            <span class="label">REASON:</span> <span class="value">Rate limit exceeded — too many requests</span><br>
+            <span class="label">ACTION:</span> <span class="value">Your IP has been logged and throttled</span><br>
+            <span class="label">POLICY:</span> <span class="value">Automated scanning and brute-force attempts are monitored</span>
+        </div>
+
+        <div class="status-bar">
+            FORTRESS DEFENSE SYSTEM <span>ACTIVE</span> &mdash;
+            Incident logged at <span id="timestamp"></span>
+        </div>
+
+        <div class="ip-display" id="ip-note">
+            If you believe this is an error, slow down and try again in a few minutes.
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('timestamp').textContent = new Date().toISOString();
+    </script>
+</body>
+</html>

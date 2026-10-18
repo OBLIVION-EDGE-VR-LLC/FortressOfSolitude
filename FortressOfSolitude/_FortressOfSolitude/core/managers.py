@@ -5,6 +5,7 @@ Proof of Concept code, No liabilities or warranties expressed or implied.
 Bridge module: shared encryption managers used by organizer and agora apps.
 """
 
+import hashlib
 import os
 from base64 import (b64encode, b64decode)
 
@@ -26,6 +27,22 @@ from _FortressOfSolitude.NeutrinoKey.models import (
 def _is_secure_note_public(instance):
     from _FortressOfSolitude.core.models import SecureNotePublic
     return isinstance(instance, SecureNotePublic)
+
+
+def _clean_b64_field(value):
+    """Decode a base64 field that may be stored as bytes repr string 'b\"...\"' or clean b64."""
+    if isinstance(value, bytes):
+        return b64decode(value)
+    # Handle Django CharField storing bytes repr like "b'abc...'"
+    if value.startswith("b'") or value.startswith('b"'):
+        cleaned = value[2:-1]  # strip b' and '
+        cleaned = cleaned.encode('latin1').decode('unicode-escape').encode('latin1')
+        cleaned = cleaned + b'=' * (len(cleaned) % 4)
+        return b64decode(cleaned)
+    # Clean base64 string
+    value_bytes = value.encode()
+    value_bytes = value_bytes + b'=' * (len(value_bytes) % 4)
+    return b64decode(value_bytes)
 
 
 class Librarian(models.Manager):
@@ -145,11 +162,6 @@ class Librarian(models.Manager):
 
     def _encrypt_data(
             self, password, **kwargs):
-        from _FortressOfSolitude.organizer.models import (
-            ImageFile, MusicFile, VideoFile, MiscFile,
-            photoFS, musicFS, videoFS, otherFS,
-        )
-        from ctypes import Union
         model_data = kwargs.pop('image_file', False)
 
         req = kwargs.pop('request', False)
@@ -157,59 +169,46 @@ class Librarian(models.Manager):
         data_kek = NeutronCore().DeriveKek(password)
         data_dek = NeutronMatterCollector().DeriveDek(password)
         nonce = data_dek.result_wrapped_nonce
-        Librarian.crypt.nonce = b64decode(nonce)
+        nonce_bytes = _clean_b64_field(nonce)
+        # Store nonce as clean base64 string for consistent retrieval
+        nonce_clean = b64encode(nonce_bytes).decode('ascii')
+        Librarian.crypt.nonce = nonce_bytes
         if not isinstance(password, bytes):
             password = password.encode()
         key = data_dek.unwrap_key(data_kek, password)
 
         encrypted_data = Librarian.crypt.AesEncryptEAX(modeldata, DEK.crypto.Sha256(key))
-        file_data = ContentFile(encrypted_data)
-        filename = req.FILES['file_field'].name
 
-        data = self.model(
-            image_file=file_data,
-            **kwargs)
-        data.image_file.name = filename
-        print(f"data.image_file.name {model_data.image_file.name}")
-        data.result_nonce_file = nonce
+        # Generate SHA256-based storage name: {user_id}/{sha256_hex}.{ext}
+        original_filename = req.FILES['file_field'].name
+        ext = ''
+        if '.' in original_filename:
+            ext = '.' + original_filename.rsplit('.', 1)[1]
+        content_hash = hashlib.sha256(encrypted_data).hexdigest()
+        storage_name = f'{req.user.pk}/{content_hash}{ext}'
+
+        file_data = ContentFile(encrypted_data)
+
+        data = self.model(**kwargs)
+        data.display_name = original_filename
+        data.result_nonce_file = nonce_clean
+        # Save the file via Django's FileField — single write to disk
+        data.image_file.save(storage_name, file_data, save=False)
         data.save()
         data_dek.save()
         data_kek.save()
-        data.data_kek.set([data_kek])
-        data.data_dek.set([data_dek])
-        print("ENCRYPTED AND SAVED DATA")
-        data.save()
-
-        # *** THIS IS THE HACKY CODE BELOW, change to STATIC location when able ***
-        if isinstance(model_data, ImageFile):
-            fd = open('/' + os.path.join(photoFS.base_location, str(data)), 'w+')
-            fd.close()
-            fd = open('/' + os.path.join(photoFS.base_location, str(data)), 'wb')
-
-        elif isinstance(model_data, MusicFile):
-            fd = open('/' + os.path.join(musicFS.base_location, str(data)), 'w+')
-            fd.close()
-            fd = open('/' + os.path.join(musicFS.base_location, str(data)), 'wb')
-
-        elif isinstance(model_data, VideoFile):
-            fd = open('/' + os.path.join(videoFS.base_location, str(data)), 'w+')
-            fd.close()
-            fd = open('/' + os.path.join(videoFS.base_location, str(data)), 'wb')
-
-        elif isinstance(model_data, MiscFile):
-            fd = open('/' + os.path.join(otherFS.base_location, str(data)), 'w+')
-            fd.close()
-            fd = open('/' + os.path.join(otherFS.base_location, str(data)), 'wb')
-
+        # Handle both M2M and FK relations for dek/kek
+        dek_field = self.model._meta.get_field('data_dek')
+        kek_field = self.model._meta.get_field('data_kek')
+        if dek_field.many_to_many:
+            data.data_dek.set([data_dek])
+            data.data_kek.set([data_kek])
         else:
-            print("something went horrible and terribly wrong unable to determine where to encrypt data")
-            return None
+            data.data_dek = data_dek
+            data.data_kek = data_kek
+            data.save()
+        print("ENCRYPTED AND SAVED DATA")
 
-        # *** end of hacky code ***
-
-        # END OF HACKY CODE
-        fd.write(encrypted_data)
-        fd.close()
         return data
 
 
@@ -327,93 +326,55 @@ class Gor_El(models.Manager):
                 self.crypt.nonce = b64decode(nonce)
             else:
                 password = request.user.password.encode()
-            keyToFile = settings.DAILY_PLANET_AES_DEK
-
-        hash = CryptoTools()
 
         if str(request.user) == "AnonymousUser":
             data_dek.crypto.nonce = b64decode(result_wrapped_nonce)
             plaintext = data_dek.crypto.AesDecryptEAX(ciphertext, CryptoTools().Sha256(key))
         else:
-            plaintext = self.crypt.AesDecryptEAX(ciphertext, data_dek)
+            # Unwrap the DEK for authenticated users
+            password = request.user.password.encode()
+            data_kek = secureNote.data_kek.get()
+            key = data_dek.unwrap_key(data_kek, password)
+            nonce = data_dek.result_wrapped_nonce
+            self.crypt.nonce = _clean_b64_field(nonce)
+            plaintext = self.crypt.AesDecryptEAX(ciphertext, CryptoTools().Sha256(key))
+
         print("securely erasing the keyToFile in memory")
         key = secure_erase_bytes(key)
         print("erased keyToFile in memory")
-        print(f"key: {key}")
         del key
         return plaintext
 
     def _decrypt_data(self, password, **kwargs):
-        from _FortressOfSolitude.organizer.models import photoFS, musicFS, otherFS
         plaintext = None
         f = kwargs.pop('image_file', False)
         req = kwargs.pop('request', False)
-        if str(f.image_file).lower().endswith(('.png', '.jpg', '.jpeg', '.tiff')):
-            encryptedFile = open('/' + os.path.join(photoFS.base_location, str(f.image_file.name)), 'rb').read()
-            data_kek: KEK = f.data_kek
 
-            data_dek: DEK = f.data_dek
+        # Read encrypted file via Django's FileField storage (honors any storage backend)
+        f.image_file.open('rb')
+        encryptedFile = f.image_file.read()
+        f.image_file.close()
 
-            # We've got the dek and kek attached to the image file so now to do the decryption
-            if isinstance(f.result_nonce_file, str):
-                wrapped_nonce = (f.result_nonce_file).encode('latin1').decode('unicode-escape').encode('latin1')
-                wrapped_nonce = wrapped_nonce[2:-1]
-                wrapped_nonce = wrapped_nonce + b'=' * (len(wrapped_nonce) % 4)
-                self.crypt.nonce = b64decode(wrapped_nonce)
-            else:
-                self.crypt.nonce = b64decode(f.data_dek.get().result_nonce_file)
-
-            keyToFile = data_dek.get().unwrap_key(data_kek.get(), password.encode())
-
-            self.crypt.nonce = b64decode(wrapped_nonce)
-            plaintext = self.crypt.AesDecryptEAX(encryptedFile, CryptoTools().Sha256(keyToFile))
-            return plaintext
-
-        elif str(f.image_file).lower().endswith(('.mp3', '.m4p', '.m4a', '.flac', '.aac')):
-            print("DEBUG>PATH:" + str(os.path.join(musicFS.base_location, str(f.image_file.name))))
-            encryptedFile = open('/' + os.path.join(musicFS.base_location, str(f.image_file.name)), 'rb').read()
-            data_kek: KEK = f.data_kek
-
-            data_dek: DEK = f.data_dek
-
-            # We've got the dek and kek attached to the image file so now to do the decryption
-            if isinstance(f.result_nonce_file, str):
-                wrapped_nonce = (f.result_nonce_file).encode('latin1').decode('unicode-escape').encode('latin1')
-                wrapped_nonce = wrapped_nonce[2:-1]
-                wrapped_nonce = wrapped_nonce + b'=' * (len(wrapped_nonce) % 4)
-                self.crypt.nonce = b64decode(wrapped_nonce)
-            else:
-                self.crypt.nonce = b64decode(f.data_dek.result_nonce_file)
-
-            keyToFile = data_dek.unwrap_key(data_kek, password.encode())
-
-            self.crypt.nonce = b64decode(wrapped_nonce)
-            plaintext = self.crypt.AesDecryptEAX(encryptedFile, CryptoTools().Sha256(keyToFile))
-            print("securely erasing the keyToFile in memory")
-            secure_erase_bytes(keyToFile)
-            print("erased keyToFile in memory")
-            return plaintext
-
+        # Get dek/kek — handle both M2M and FK relations
+        dek_field = f._meta.get_field('data_dek')
+        kek_field = f._meta.get_field('data_kek')
+        if dek_field.many_to_many:
+            data_dek: DEK = f.data_dek.get()
+            data_kek: KEK = f.data_kek.get()
         else:
-            print("DEBUG>PATH:" + str(os.path.join(otherFS.base_location, str(f.image_file.name))))
-            encryptedFile = open('/' + os.path.join(otherFS.base_location, str(f.image_file.name)), 'rb').read()
+            data_dek: DEK = f.data_dek
             data_kek: KEK = f.data_kek
 
-            data_dek: DEK = f.data_dek
+        # Restore the nonce used during encryption
+        nonce_bytes = _clean_b64_field(f.result_nonce_file)
 
-            # We've got the dek and kek attached to the image file so now to do the decryption
-            if isinstance(f.result_nonce_file, str):
-                wrapped_nonce = (f.result_nonce_file).encode('latin1').decode('unicode-escape').encode('latin1')
-                wrapped_nonce = wrapped_nonce[2:-1]
-                wrapped_nonce = wrapped_nonce + b'=' * (len(wrapped_nonce) % 4)
-                self.crypt.nonce = b64decode(wrapped_nonce)
-            else:
-                self.crypt.nonce = b64decode(f.data_dek.result_nonce_file)
+        if not isinstance(password, bytes):
+            password = password.encode()
+        keyToFile = data_dek.unwrap_key(data_kek, password)
 
-            keyToFile = data_dek.unwrap_key(data_kek, password.encode())
-
-            self.crypt.nonce = b64decode(wrapped_nonce)
-            plaintext = self.crypt.AesDecryptEAX(encryptedFile, CryptoTools().Sha256(keyToFile))
-            return plaintext
-
+        self.crypt.nonce = nonce_bytes
+        plaintext = self.crypt.AesDecryptEAX(encryptedFile, CryptoTools().Sha256(keyToFile))
+        print("securely erasing the keyToFile in memory")
+        secure_erase_bytes(keyToFile)
+        print("erased keyToFile in memory")
         return plaintext

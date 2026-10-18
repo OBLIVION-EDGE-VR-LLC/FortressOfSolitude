@@ -9,7 +9,8 @@ from django.conf.urls.static import static
 from django.contrib.auth.decorators import login_required
 
 from .views import tag_detail, tasking_detail, TagCreate, TaskingCreate, \
-    UploadFile, TaskingList, TagList, TaskingUpdate, SuccessView, DownloadImageList, \
+    UploadFile, UploadFolder, UploadFileAjax, UploadFolderFileAjax, \
+    TaskingList, TagList, TaskingUpdate, SuccessView, DownloadImageList, \
     DownloadTheGoodsView, DownloadMusicList, DownloadTheMusicalGoodsView, DownloadMiscList, \
     DownloadTheMescalineView, FolderBrowserView, CreateSubfolderView  # , task_status
 
@@ -35,6 +36,15 @@ urlpatterns = [
                   re_path(r'^upload/create/$',
                       login_required(UploadFile.as_view()),
                       name='organizer_upload_create'),
+                  re_path(r'^upload/folder/$',
+                      login_required(UploadFolder.as_view()),
+                      name='organizer_upload_folder'),
+                  re_path(r'^upload/api/file/$',
+                      login_required(UploadFileAjax.as_view()),
+                      name='organizer_upload_api_file'),
+                  re_path(r'^upload/api/folder-file/$',
+                      login_required(UploadFolderFileAjax.as_view()),
+                      name='organizer_upload_api_folder_file'),
                   re_path(r'^upload/create/uploadsuccess/$',
                       login_required(SuccessView.as_view()),
                       name='organizer_upload_success'),

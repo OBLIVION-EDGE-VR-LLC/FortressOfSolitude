@@ -6,7 +6,7 @@ Proof of Concept code, No liabilities or warranties expressed or implied.
 from django import forms
 from django.contrib.auth import get_user
 from django.contrib.auth.models import AnonymousUser
-from ckeditor.widgets import CKEditorWidget
+from django_ckeditor_5.widgets import CKEditor5Widget
 
 from .models import Post, SecureDataAtRestPost, SecureDataAtRestPostPublic
 from _FortressOfSolitude.organizer.models import SecureNote
@@ -16,7 +16,10 @@ from _FortressOfSolitude.NeutrinoKey.models import DEK, KEK
 class PostForm(forms.ModelForm):
     class Meta:
         model = Post
-        exclude = ('author',)
+        fields = ['title', 'slug', 'text']
+        widgets = {
+            'text': CKEditor5Widget(config_name='default'),
+        }
 
     def clean_slug(self):
         return self.cleaned_data['slug'].lower()
@@ -34,9 +37,9 @@ class PostForm(forms.ModelForm):
 class SecurePostForm(forms.ModelForm):
     class Meta:
         model = SecureDataAtRestPost
-        exclude = ('author',)
+        fields = ['title', 'slug', 'secure_text']
         widgets = {
-            'secure_text': CKEditorWidget(),
+            'secure_text': CKEditor5Widget(config_name='default'),
         }
 
     def clean_slug(self):
@@ -65,7 +68,10 @@ class SecurePostForm(forms.ModelForm):
 class PublicSecurePostForm(forms.ModelForm):
     class Meta:
         model = SecureDataAtRestPostPublic
-        exclude = ('author',)
+        fields = ['title', 'slug', 'secure_text']
+        widgets = {
+            'secure_text': CKEditor5Widget(config_name='default'),
+        }
 
     def clean_slug(self):
         return self.cleaned_data['slug'].lower()

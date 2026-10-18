@@ -17,7 +17,7 @@ from .forms import DailyPlanetSubscriber
 # Create your views here.
 class FreeSubscription(CreateView):
     form_class = DailyPlanetSubscriber
-    success_url = 'superhero/registersuccess.html'
+    success_url = reverse_lazy('dj-auth:register_success')
     template_name = 'superhero/registration_form.html'
 
 

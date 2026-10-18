@@ -8,10 +8,10 @@ from django.contrib.auth.decorators import login_required
 from .models import Tag, Tasking
 from django.shortcuts import (get_object_or_404, redirect, render)
 from django.urls import reverse, reverse_lazy
-from django.http import HttpResponseRedirect, HttpResponse, Http404
+from django.http import HttpResponseRedirect, HttpResponse, Http404, JsonResponse
 from django.utils.decorators import method_decorator
 from django.contrib.auth.decorators import permission_required
-from .forms import TagForm, TaskingForm, UploadFileForm
+from .forms import TagForm, TaskingForm, FileUploadForm, FolderUploadForm
 from django.views.generic import (FormView, ListView, View)
 from _FortressOfSolitude.NeutrinoKey.decorators import custom_login_required
 from .utils import CreateView
@@ -299,28 +299,36 @@ class SuccessView(View):
 # '''
 
 
-class UploadFile(FormView):  # CreateView
-    form_class = UploadFileForm
+class UploadFile(View):
     template_name = 'organizer/upload.html'
     success_url = reverse_lazy('organizer_upload_success')
 
-    def get_form_kwargs(self):
-        kwargs = super().get_form_kwargs()
-        kwargs['user'] = self.request.user
-        return kwargs
+    @method_decorator(login_required)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
 
-    def post(self, request, *args, **kwargs):
-        self.object = None
-        form = self.form_class(request.POST, request.FILES, user=request.user)
+    def get(self, request):
+        file_form = FileUploadForm(user=request.user)
+        folder_form = FolderUploadForm(user=request.user)
+        return render(request, self.template_name, {
+            'file_form': file_form,
+            'folder_form': folder_form,
+        })
+
+    def post(self, request):
+        file_form = FileUploadForm(request.POST, request.FILES, user=request.user)
+        folder_form = FolderUploadForm(user=request.user)
+
+        if not file_form.is_valid():
+            return render(request, self.template_name, {
+                'file_form': file_form,
+                'folder_form': folder_form,
+            })
+
         filez = request.FILES.getlist('file_field')
-        total_work = len(filez)
-        print(f"Number of Files uploaded: {total_work}")
+        selected_folder = file_form.cleaned_data.get('folder')
+        print(f"Number of Files uploaded: {len(filez)}")
 
-        selected_folder = None
-        if form.is_valid():
-            selected_folder = form.cleaned_data.get('folder')
-
-        i = 0
         for f in filez:
             print(str(f))
             if str(f).lower().endswith(('.png', '.jpg', '.jpeg', '.tiff')):
@@ -336,13 +344,94 @@ class UploadFile(FormView):  # CreateView
             if enc and selected_folder:
                 enc.folder = selected_folder
                 enc.save()
-            i += 1
 
-        return self.form_valid(form) if form.is_valid() else self.form_invalid(form)
+        return HttpResponseRedirect(self.success_url)
+
+
+class UploadFolder(View):
+    template_name = 'organizer/upload.html'
+    success_url = reverse_lazy('organizer_upload_success')
 
     @method_decorator(login_required)
     def dispatch(self, request, *args, **kwargs):
         return super().dispatch(request, *args, **kwargs)
+
+    def get(self, request):
+        file_form = FileUploadForm(user=request.user)
+        folder_form = FolderUploadForm(user=request.user)
+        return render(request, self.template_name, {
+            'file_form': file_form,
+            'folder_form': folder_form,
+        })
+
+    def post(self, request):
+        file_form = FileUploadForm(user=request.user)
+        folder_form = FolderUploadForm(request.POST, request.FILES, user=request.user)
+
+        if not folder_form.is_valid():
+            return render(request, self.template_name, {
+                'file_form': file_form,
+                'folder_form': folder_form,
+            })
+
+        parent_folder = folder_form.cleaned_data['parent_folder']
+        # Verify the parent folder belongs to this user
+        if parent_folder.owner != request.user:
+            return HttpResponseRedirect(self.success_url)
+
+        filez = request.FILES.getlist('folder_field')
+        # relative_paths comes from hidden inputs populated by JS, or from POST data
+        relative_paths = request.POST.getlist('relative_paths')
+        if len(relative_paths) == 1 and ',' not in relative_paths[0]:
+            # Single path submitted as string
+            relative_paths = [relative_paths[0]]
+
+        password = str(request.user.password)
+        user_password = request.user.password.encode()
+
+        # Build folder tree from relative paths and encrypt files into them
+        folder_cache = {}  # maps path tuple -> UserFolder
+        for uploaded_file, rel_path in zip(filez, relative_paths):
+            # rel_path like "my_project/docs/file.pdf"
+            parts = rel_path.replace('\\', '/').split('/')
+            folder_parts = parts[:-1]  # directory components
+            filename = parts[-1]
+
+            # Create folder hierarchy under parent
+            current_parent = parent_folder
+            for i, folder_name in enumerate(folder_parts):
+                cache_key = tuple(folder_parts[:i + 1])
+                if cache_key not in folder_cache:
+                    existing = UserFolder.objects.filter(
+                        parent=current_parent, name=folder_name, owner=request.user
+                    ).first()
+                    if existing:
+                        folder_cache[cache_key] = existing
+                    else:
+                        folder_cache[cache_key] = UserFolder.create_subfolder(
+                            parent=current_parent,
+                            name=folder_name,
+                            password=user_password,
+                        )
+                current_parent = folder_cache[cache_key]
+
+            # Encrypt the file — put it into request.FILES for _encrypt_data
+            request.FILES['file_field'] = uploaded_file
+            uploaded_file.seek(0)
+
+            fname = str(filename).lower()
+            if fname.endswith(('.png', '.jpg', '.jpeg', '.tiff')):
+                enc = handle_image_uploaded_file(ImageFile(uploaded_file), request)
+            elif fname.endswith(('.mp3', '.flac', '.aac', '.m4p', '.m4a')):
+                enc = handle_music_uploaded_file(MusicFile(uploaded_file), request)
+            else:
+                enc = handle_misc_uploaded_file(MiscFile(uploaded_file), request)
+
+            if enc:
+                enc.folder = current_parent
+                enc.save()
+
+        return HttpResponseRedirect(self.success_url)
 
 
 def handle_misc_uploaded_file(f: MiscFile, request):
@@ -463,6 +552,103 @@ class CreateSubfolderView(View):
                 password=request.user.password.encode(),
             )
         return redirect('organizer_folder_detail', pk=parent.pk)
+
+
+class UploadFileAjax(View):
+    """AJAX endpoint: encrypt and store a single file. Returns JSON."""
+
+    @method_decorator(login_required)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
+
+    def post(self, request):
+        uploaded = request.FILES.get('file_field')
+        if not uploaded:
+            return JsonResponse({'status': 'error', 'message': 'No file provided'}, status=400)
+
+        folder_pk = request.POST.get('folder')
+        selected_folder = None
+        if folder_pk:
+            selected_folder = UserFolder.objects.filter(pk=folder_pk, owner=request.user).first()
+
+        filename = str(uploaded.name)
+        fname = filename.lower()
+
+        if fname.endswith(('.png', '.jpg', '.jpeg', '.tiff')):
+            enc = handle_image_uploaded_file(ImageFile(uploaded), request)
+        elif fname.endswith(('.mp3', '.flac', '.aac', '.m4p', '.m4a')):
+            enc = handle_music_uploaded_file(MusicFile(uploaded), request)
+        else:
+            enc = handle_misc_uploaded_file(MiscFile(uploaded), request)
+
+        if enc and selected_folder:
+            enc.folder = selected_folder
+            enc.save()
+
+        if enc:
+            return JsonResponse({'status': 'ok', 'display_name': enc.display_name or filename})
+        return JsonResponse({'status': 'error', 'message': 'Encryption failed'}, status=500)
+
+
+class UploadFolderFileAjax(View):
+    """AJAX endpoint: encrypt a single file within a folder upload. Creates subfolders as needed."""
+
+    @method_decorator(login_required)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
+
+    def post(self, request):
+        uploaded = request.FILES.get('file_field')
+        if not uploaded:
+            return JsonResponse({'status': 'error', 'message': 'No file provided'}, status=400)
+
+        parent_pk = request.POST.get('parent_folder')
+        relative_path = request.POST.get('relative_path', '')
+
+        if not parent_pk or not relative_path:
+            return JsonResponse({'status': 'error', 'message': 'Missing parent_folder or relative_path'}, status=400)
+
+        parent_folder = UserFolder.objects.filter(pk=parent_pk).first()
+        if not parent_folder or parent_folder.owner != request.user:
+            return JsonResponse({'status': 'error', 'message': 'Forbidden'}, status=403)
+
+        # Build folder hierarchy from relative path
+        parts = relative_path.replace('\\', '/').split('/')
+        folder_parts = parts[:-1]
+        user_password = request.user.password.encode()
+
+        current_parent = parent_folder
+        for folder_name in folder_parts:
+            existing = UserFolder.objects.filter(
+                parent=current_parent, name=folder_name, owner=request.user
+            ).first()
+            if existing:
+                current_parent = existing
+            else:
+                current_parent = UserFolder.create_subfolder(
+                    parent=current_parent,
+                    name=folder_name,
+                    password=user_password,
+                )
+
+        # Encrypt the file
+        filename = str(uploaded.name)
+        fname = filename.lower()
+        request.FILES['file_field'] = uploaded
+        uploaded.seek(0)
+
+        if fname.endswith(('.png', '.jpg', '.jpeg', '.tiff')):
+            enc = handle_image_uploaded_file(ImageFile(uploaded), request)
+        elif fname.endswith(('.mp3', '.flac', '.aac', '.m4p', '.m4a')):
+            enc = handle_music_uploaded_file(MusicFile(uploaded), request)
+        else:
+            enc = handle_misc_uploaded_file(MiscFile(uploaded), request)
+
+        if enc:
+            enc.folder = current_parent
+            enc.save()
+            return JsonResponse({'status': 'ok', 'display_name': enc.display_name or filename})
+        return JsonResponse({'status': 'error', 'message': 'Encryption failed'}, status=500)
 
 
 # @task

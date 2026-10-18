@@ -24,7 +24,9 @@
             — {{ topic.view_count }} views
         </div>
         <div class="post-body">
+            {% autoescape off %}
             {% decrypt_public_text topic %}
+            {% endautoescape %}
         </div>
     </section>
 
@@ -44,7 +46,9 @@
                 {% endif %}
             </div>
             <div class="reply-body">
-                {{ reply.secure_text }}
+                {% autoescape off %}
+                {% decrypt_reply reply %}
+                {% endautoescape %}
             </div>
         </div>
         {% endfor %}
@@ -57,7 +61,8 @@
         <h3>Post a Reply</h3>
         <form method="post" action="{% url 'agora_reply_create' category_slug=category.slug pk=topic.pk slug=topic.slug %}">
             {% csrf_token %}
-            <textarea name="secure_text" rows="5" required placeholder="Write your reply..."></textarea>
+            {{ reply_form.media }}
+            {{ reply_form.as_p }}
             <button type="submit">Post Reply</button>
         </form>
     </section>

@@ -11,8 +11,8 @@ from django.db import models
 from django.urls import reverse
 from django.utils import timezone
 
-from ckeditor.fields import RichTextField
 from _FortressOfSolitude.NeutrinoKey.models import DEK, KEK
+from _FortressOfSolitude.core.managers import Librarian as _Librarian
 
 
 class SecureNotePublic(models.Model):
@@ -28,7 +28,7 @@ class SecureNotePublic(models.Model):
     slug = models.SlugField(max_length=32, unique=True, db_index=True, help_text='A label for URL config.')
     title = models.CharField(max_length=64, default='Bruh, Change the Title')
     pub_date = models.DateTimeField('date published', auto_now_add=timezone.now())
-    secure_text = RichTextField(blank=True, null=True)
+    secure_text = models.TextField(blank=True, null=True)
     data_dek = models.ManyToManyField(DEK, default=1, related_name='data_dek_public')
     data_kek = models.ManyToManyField(KEK, default=1, related_name='data_kek_public')
     result_nonce_text = models.CharField(max_length=128, default=b64encode(int(55).to_bytes(4, 'big')))
@@ -50,3 +50,40 @@ class SecureNotePublic(models.Model):
 
     def natural_key(self):
         return (self.slug,)
+
+
+class ResearchPost(SecureNotePublic):
+    """
+    A publicly readable research publication.
+    Encrypted at rest via Daily Planet shared key.
+    Author displayed by Agora handle.
+    """
+    author = models.ForeignKey(
+        'agora.AgoraProfile',
+        on_delete=models.CASCADE,
+        related_name='research_posts',
+    )
+    abstract = models.TextField(max_length=500, blank=True, default='')
+    tags = models.ManyToManyField(
+        'organizer.Tag',
+        related_name='research_posts',
+        blank=True,
+    )
+
+    # Override inherited M2M fields with unique related_names
+    data_dek = models.ManyToManyField(DEK, default=1, related_name='research_dek')
+    data_kek = models.ManyToManyField(KEK, default=1, related_name='research_kek')
+
+    objects = _Librarian()
+
+    class Meta:
+        verbose_name = 'research post'
+        verbose_name_plural = 'research posts'
+        ordering = ['-pub_date']
+
+    def __str__(self):
+        return self.title
+
+    def get_absolute_url(self):
+        return reverse('research_detail', kwargs={
+            'pk': self.pk, 'slug': self.slug})

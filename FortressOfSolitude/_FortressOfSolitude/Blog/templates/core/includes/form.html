@@ -4,6 +4,7 @@
         action="{{ action }}"
         method="{{ method|default:'post' }}">
       {% csrf_token %}
+      {{ form.media }}
       {{ form.as_p }}
       <button
           class="button-primary"

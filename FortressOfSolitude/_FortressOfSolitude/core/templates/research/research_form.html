@@ -1,0 +1,20 @@
+{% extends "organizer/base.html" %}
+
+{% block title %}{{ block.super }} - Publish Research{% endblock %}
+
+{% block content %}
+<article>
+    <h2>Publish Research</h2>
+    <div class="disclaimer" style="background: #1a1a2e; border: 1px solid #ff4444; padding: 1em; margin-bottom: 1.5em; border-radius: 4px;">
+        <strong>Warning:</strong> Research posts are publicly visible to anyone on the internet.
+        Your Agora handle will be displayed as the author.
+    </div>
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ form.media }}
+        {{ form.as_p }}
+        <button type="submit">Publish</button>
+    </form>
+</article>
+{% endblock %}

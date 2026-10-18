@@ -49,7 +49,7 @@ urlpatterns = [
         r'(?P<slug>[\w\-]+)/'
         r'delete/$',
         SecurePostDelete.as_view(),
-        name='blog_secureNote_delete'),
+        name='blog_securepost_delete'),
 
     # Public Viewable Blog
     re_path(r'^PublicSecurelist/$',

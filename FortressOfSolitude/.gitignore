@@ -1,4 +1,31 @@
+# Python
 bin/
-.pyc
-fortressofsolitudevenv/
 __pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+fortress/
+fortressofsolitudevenv/
+
+# Database
+db.sqlite3
+
+# GCP deployment config (contains SECRET_KEY)
+.gcp-fortressofsolitude
+
+# Docker test volumes
+fortress-test-data/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

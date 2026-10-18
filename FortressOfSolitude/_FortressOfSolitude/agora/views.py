@@ -12,7 +12,7 @@ from django.utils.text import slugify
 from django.views.generic import View
 import uuid
 
-from .forms import AgoraProfileForm, TopicForm
+from .forms import AgoraProfileForm, TopicForm, ReplyForm
 from .models import AgoraProfile, Category, Topic, Reply
 
 
@@ -185,6 +185,7 @@ class TopicDetailView(AgoraProfileRequiredMixin, View):
             'object': topic,
             'replies': replies,
             'category': topic.category,
+            'reply_form': ReplyForm(),
         })
 
 

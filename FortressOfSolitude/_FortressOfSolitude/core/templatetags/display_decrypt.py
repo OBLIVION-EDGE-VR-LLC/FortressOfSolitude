@@ -7,6 +7,7 @@ from _FortressOfSolitude.core.managers import Gor_El
 from django.template import (
     Library, TemplateSyntaxError)
 from django.template.defaultfilters import stringfilter
+from django.utils.safestring import mark_safe
 
 # https://docs.djangoproject.com/en/1.8/howto/custom-template-tags/
 
@@ -22,8 +23,8 @@ def getSecureNote(context, secure_note):
     if result is None:
         return ''
     if isinstance(result, bytes):
-        return result.decode('utf-8', errors='replace')
-    return result
+        return mark_safe(result.decode('utf-8', errors='replace'))
+    return mark_safe(result)
 
 
 @register.filter(name='decrypt_text', takes_context=True)
@@ -50,10 +51,41 @@ def decrypt_public_text(context, secure_note):
     request = context['request']
     value = gor_el._decrypt_text(secure_text, request)
     if value is None:
-        return value
+        return ''
     else:
         value = new_line_strip(value.decode())
-    return value
+    return mark_safe(value)
+
+
+@register.simple_tag(name='decrypt_reply', takes_context=True)
+def decrypt_reply(context, secure_note_obj):
+    """
+    Decrypt any SecureNotePublic instance using the Daily Planet shared key.
+    Works for Agora replies, topics, research posts — any object with
+    data_dek/data_kek M2M fields and secure_text.
+
+    Usage: {% decrypt_reply reply %}
+    """
+    from django.contrib.auth.models import AnonymousUser
+
+    request = context.get('request')
+    if request is None:
+        from django.test import RequestFactory
+        request = RequestFactory().get('/')
+        request.user = AnonymousUser()
+    elif not hasattr(request, 'user') or request.user is None:
+        request.user = AnonymousUser()
+
+    gor_el = Gor_El()
+    try:
+        result = gor_el._decrypt_text(secure_note_obj, request)
+    except Exception:
+        return ''
+    if result is None:
+        return ''
+    if isinstance(result, bytes):
+        return mark_safe(result.decode('utf-8', errors='replace'))
+    return mark_safe(result)
 
 
 @register.inclusion_tag(

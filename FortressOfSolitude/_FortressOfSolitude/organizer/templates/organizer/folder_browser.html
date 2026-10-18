@@ -43,13 +43,34 @@
         <h3>Files</h3>
         <ul>
             {% for f in image_files %}
-            <li>&#128247; {{ f.image_file.name }}</li>
+            <li>
+                &#128247; {{ f.display_name|default:f.image_file.name }}
+                <a href="{% url 'organizer_download_pull' %}{{ f.pk }}"
+                   title="Download {{ f.display_name|default:'file' }}"
+                   style="margin-left: 0.5em;">
+                    &#11015;
+                </a>
+            </li>
             {% endfor %}
             {% for f in music_files %}
-            <li>&#127925; {{ f.image_file.name }}</li>
+            <li>
+                &#127925; {{ f.display_name|default:f.image_file.name }}
+                <a href="{% url 'organizer_music_download_pull' %}{{ f.pk }}"
+                   title="Download {{ f.display_name|default:'file' }}"
+                   style="margin-left: 0.5em;">
+                    &#11015;
+                </a>
+            </li>
             {% endfor %}
             {% for f in misc_files %}
-            <li>&#128196; {{ f.image_file.name }}</li>
+            <li>
+                &#128196; {{ f.display_name|default:f.image_file.name }}
+                <a href="{% url 'organizer_misc_download_pull' %}{{ f.pk }}"
+                   title="Download {{ f.display_name|default:'file' }}"
+                   style="margin-left: 0.5em;">
+                    &#11015;
+                </a>
+            </li>
             {% endfor %}
         </ul>
     </section>

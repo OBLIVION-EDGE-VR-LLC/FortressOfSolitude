@@ -70,13 +70,13 @@ class CategoryModelTest(TestCase):
     def test_create_category(self):
         """Can create a forum category."""
         cat = Category.objects.create(
-            name='Discussion Boards',
-            slug='discussion-boards',
-            description='Open discourse on any topic.',
+            name='Test Category',
+            slug='test-category',
+            description='A test category.',
         )
         self.assertIsNotNone(cat.pk)
-        self.assertEqual(cat.name, 'Discussion Boards')
-        self.assertEqual(cat.slug, 'discussion-boards')
+        self.assertEqual(cat.name, 'Test Category')
+        self.assertEqual(cat.slug, 'test-category')
 
     def test_slug_is_unique(self):
         """Category slugs must be unique."""
@@ -87,18 +87,21 @@ class CategoryModelTest(TestCase):
     def test_str_returns_name(self):
         """String representation is the category name."""
         cat = Category.objects.create(
-            name='Creative Showcase',
-            slug='creative-showcase',
-            description='Share creative works.',
+            name='Str Test Category',
+            slug='str-test-category',
+            description='For str test.',
         )
-        self.assertEqual(str(cat), 'Creative Showcase')
+        self.assertEqual(str(cat), 'Str Test Category')
 
     def test_ordering_by_name(self):
         """Categories are ordered alphabetically by name."""
         Category.objects.create(name='Zebra', slug='zebra', description='z')
         Category.objects.create(name='Alpha', slug='alpha', description='a')
         cats = list(Category.objects.values_list('name', flat=True))
-        self.assertEqual(cats, ['Alpha', 'Zebra'])
+        # Seeded categories exist too; just check Alpha comes before Zebra
+        alpha_idx = cats.index('Alpha')
+        zebra_idx = cats.index('Zebra')
+        self.assertLess(alpha_idx, zebra_idx)
 
 
 from _FortressOfSolitude.NeutrinoKey.models import DEK, KEK
@@ -114,10 +117,12 @@ class TopicModelTest(TestCase):
         self.profile = AgoraProfile.objects.create(
             user=self.user, handle='wonder-woman',
         )
-        self.category = Category.objects.create(
-            name='Discussion Boards',
+        self.category, _ = Category.objects.get_or_create(
             slug='discussion-boards',
-            description='Open discourse.',
+            defaults={
+                'name': 'Discussion Boards',
+                'description': 'Open discourse.',
+            },
         )
 
     def test_create_topic(self):
@@ -227,10 +232,12 @@ class ReplyModelTest(TestCase):
         self.profile = AgoraProfile.objects.create(
             user=self.user, handle='dark-knight',
         )
-        self.category = Category.objects.create(
-            name='Knowledge Exchange',
+        self.category, _ = Category.objects.get_or_create(
             slug='knowledge-exchange',
-            description='Q&A and peer learning.',
+            defaults={
+                'name': 'Knowledge Exchange',
+                'description': 'Q&A and peer learning.',
+            },
         )
 
     def test_create_reply(self):
@@ -713,3 +720,12 @@ class NavBarAgoraLinkTest(TestCase):
         """Blog base template includes The Agora link."""
         response = self.client.get('/blog/')
         self.assertContains(response, 'The Agora')
+
+
+class DecryptReplyTagTest(TestCase):
+    """Tests for the decrypt_reply template tag."""
+
+    def test_decrypt_reply_tag_exists(self):
+        """decrypt_reply tag is registered and importable."""
+        from _FortressOfSolitude.core.templatetags.display_decrypt import decrypt_reply
+        self.assertTrue(callable(decrypt_reply))

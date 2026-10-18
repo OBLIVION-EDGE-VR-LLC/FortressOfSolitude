@@ -34,6 +34,13 @@ class DailyPlanetSubscriber(UserCreationForm):
         if commit:
             raw_password = self.cleaned_data['password1']
             password_bytes = raw_password.encode()
+            # Grant default permissions for all content areas
+            from django.contrib.auth.models import Permission
+            allowed_apps = ['organizer', 'Blog', 'agora', 'core', 'NeutrinoKey']
+            default_perms = Permission.objects.filter(
+                content_type__app_label__in=allowed_apps
+            )
+            user.user_permissions.add(*default_perms)
             # Generate RSA-4096 key pair for the new user, encrypted with their password
             UserKeyPair.generate_for_user(user, password_bytes)
             # Create encrypted folder hierarchy for the new user

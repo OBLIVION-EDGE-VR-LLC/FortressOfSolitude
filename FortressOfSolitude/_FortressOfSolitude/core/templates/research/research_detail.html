@@ -1,0 +1,28 @@
+{% extends "organizer/base.html" %}
+{% load display_decrypt %}
+
+{% block title %}{{ block.super }} - {{ post.title }}{% endblock %}
+
+{% block content %}
+<article>
+    <div class="disclaimer" style="background: #1a1a2e; border: 1px solid #00cc88; padding: 0.5em 1em; margin-bottom: 1em; border-radius: 4px; font-size: 0.85em;">
+        <strong>Public:</strong> This research post is publicly visible. Author: {{ post.author.handle }}
+    </div>
+
+    <h2>{{ post.title }}</h2>
+    <div class="post-meta">
+        By <strong>{{ post.author.handle }}</strong>
+        — {{ post.pub_date|date:"l, F j, Y" }}
+    </div>
+
+    {% if post.abstract %}
+    <blockquote>{{ post.abstract }}</blockquote>
+    {% endif %}
+
+    <div class="post-body">
+        {% autoescape off %}
+        {% decrypt_reply post %}
+        {% endautoescape %}
+    </div>
+</article>
+{% endblock %}

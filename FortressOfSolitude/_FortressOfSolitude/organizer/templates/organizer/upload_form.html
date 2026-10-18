@@ -1,14 +1,207 @@
-﻿
-{% block content %}
-<form enctype="multipart/form-data"
-      method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <p></p>
-    <button type="submit">
-        Upload
-    </button>
 
+{% block content %}
+
+<style>
+.progress-container {
+    display: none;
+    margin: 1em 0;
+}
+.progress-bar-track {
+    width: 100%;
+    height: 24px;
+    background: #333;
+    border-radius: 4px;
+    overflow: hidden;
+}
+.progress-bar-fill {
+    height: 100%;
+    width: 0%;
+    background: #00cc88;
+    transition: width 0.3s ease;
+}
+.progress-text {
+    margin-top: 0.5em;
+    font-size: 0.9em;
+}
+.progress-error {
+    color: #ff4444;
+    margin-top: 0.5em;
+}
+</style>
+
+<h3>Upload File</h3>
+<form enctype="multipart/form-data"
+      method="post"
+      action="{% url 'organizer_upload_create' %}"
+      id="file-upload-form">
+    {% csrf_token %}
+    {{ file_form.as_p }}
+    <p></p>
+    <button type="submit" id="file-upload-btn">
+        Upload File
+    </button>
 </form>
+<div class="progress-container" id="file-progress">
+    <div class="progress-bar-track">
+        <div class="progress-bar-fill" id="file-progress-bar"></div>
+    </div>
+    <div class="progress-text" id="file-progress-text">0/0 files uploaded</div>
+    <div class="progress-error" id="file-progress-error"></div>
+</div>
+
+<hr>
+
+<h3>Upload Folder</h3>
+<form enctype="multipart/form-data"
+      method="post"
+      action="{% url 'organizer_upload_folder' %}"
+      id="folder-upload-form">
+    {% csrf_token %}
+    {{ folder_form.as_p }}
+    <p></p>
+    <button type="submit" id="folder-upload-btn">
+        Upload Folder
+    </button>
+</form>
+<div class="progress-container" id="folder-progress">
+    <div class="progress-bar-track">
+        <div class="progress-bar-fill" id="folder-progress-bar"></div>
+    </div>
+    <div class="progress-text" id="folder-progress-text">0/0 files uploaded</div>
+    <div class="progress-error" id="folder-progress-error"></div>
+</div>
+
+<script>
+var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+var successUrl = '{% url "organizer_upload_success" %}';
+
+// --- File Upload with Progress ---
+document.getElementById('file-upload-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var fileInput = this.querySelector('input[type="file"]');
+    var folderSelect = this.querySelector('[name="folder"]');
+    var files = fileInput.files;
+    if (!files || files.length === 0) return;
+
+    var total = files.length;
+    var completed = 0;
+    var btn = document.getElementById('file-upload-btn');
+    var progress = document.getElementById('file-progress');
+    var bar = document.getElementById('file-progress-bar');
+    var text = document.getElementById('file-progress-text');
+    var errorDiv = document.getElementById('file-progress-error');
+
+    btn.disabled = true;
+    progress.style.display = 'block';
+    errorDiv.textContent = '';
+    text.textContent = '0/' + total + ' files uploaded';
+
+    function uploadNext(index) {
+        if (index >= total) {
+            text.textContent = total + '/' + total + ' files uploaded — done!';
+            setTimeout(function() { window.location.href = successUrl; }, 500);
+            return;
+        }
+        var formData = new FormData();
+        formData.append('file_field', files[index]);
+        formData.append('csrfmiddlewaretoken', csrfToken);
+        if (folderSelect && folderSelect.value) {
+            formData.append('folder', folderSelect.value);
+        }
+
+        fetch('{% url "organizer_upload_api_file" %}', {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin'
+        })
+        .then(function(resp) { return resp.json(); })
+        .then(function(data) {
+            if (data.status === 'ok') {
+                completed++;
+                var pct = Math.round((completed / total) * 100);
+                bar.style.width = pct + '%';
+                text.textContent = completed + '/' + total + ' files uploaded';
+                uploadNext(index + 1);
+            } else {
+                errorDiv.textContent = 'Error on "' + files[index].name + '": ' + (data.message || 'unknown');
+                btn.disabled = false;
+            }
+        })
+        .catch(function(err) {
+            errorDiv.textContent = 'Network error on "' + files[index].name + '": ' + err;
+            btn.disabled = false;
+        });
+    }
+
+    uploadNext(0);
+});
+
+// --- Folder Upload with Progress ---
+document.getElementById('folder-upload-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var fileInput = this.querySelector('input[type="file"]');
+    var parentSelect = this.querySelector('[name="parent_folder"]');
+    var files = fileInput.files;
+    if (!files || files.length === 0) return;
+    if (!parentSelect || !parentSelect.value) {
+        alert('Please select a parent folder.');
+        return;
+    }
+
+    var total = files.length;
+    var completed = 0;
+    var btn = document.getElementById('folder-upload-btn');
+    var progress = document.getElementById('folder-progress');
+    var bar = document.getElementById('folder-progress-bar');
+    var text = document.getElementById('folder-progress-text');
+    var errorDiv = document.getElementById('folder-progress-error');
+
+    btn.disabled = true;
+    progress.style.display = 'block';
+    errorDiv.textContent = '';
+    text.textContent = '0/' + total + ' files uploaded';
+
+    function uploadNext(index) {
+        if (index >= total) {
+            text.textContent = total + '/' + total + ' files uploaded — done!';
+            setTimeout(function() { window.location.href = successUrl; }, 500);
+            return;
+        }
+        var file = files[index];
+        var relPath = file.webkitRelativePath || file.name;
+
+        var formData = new FormData();
+        formData.append('file_field', file);
+        formData.append('csrfmiddlewaretoken', csrfToken);
+        formData.append('parent_folder', parentSelect.value);
+        formData.append('relative_path', relPath);
+
+        fetch('{% url "organizer_upload_api_folder_file" %}', {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin'
+        })
+        .then(function(resp) { return resp.json(); })
+        .then(function(data) {
+            if (data.status === 'ok') {
+                completed++;
+                var pct = Math.round((completed / total) * 100);
+                bar.style.width = pct + '%';
+                text.textContent = completed + '/' + total + ' files uploaded';
+                uploadNext(index + 1);
+            } else {
+                errorDiv.textContent = 'Error on "' + file.name + '": ' + (data.message || 'unknown');
+                btn.disabled = false;
+            }
+        })
+        .catch(function(err) {
+            errorDiv.textContent = 'Network error on "' + file.name + '": ' + err;
+            btn.disabled = false;
+        });
+    }
+
+    uploadNext(0);
+});
+</script>
 
 {% endblock %}

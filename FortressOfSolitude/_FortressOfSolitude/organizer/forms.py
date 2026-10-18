@@ -22,6 +22,18 @@ class MultipleFileInput(forms.FileInput):
     def value_from_datadict(self, data, files, name):
         return files.getlist(name)
 
+
+class MultipleFileField(forms.FileField):
+    """FileField that accepts multiple files (returns a list)."""
+
+    def clean(self, data, initial=None):
+        if not data or data == []:
+            if self.required:
+                raise ValidationError(self.error_messages['required'])
+            return []
+        # Validate each file individually
+        return [super(MultipleFileField, self).clean(f, initial) for f in data]
+
 class NewsLinkForm(forms.ModelForm):
     class Meta:
         model = NewsLink
@@ -82,10 +94,21 @@ class TaskingForm(SlugCleanMixin, forms.ModelForm):
     def clean_name(self):
         return self.cleaned_data['name'].lower()
 
-class UploadFileForm(SlugCleanMixin, forms.Form):
-    title = forms.CharField(max_length=32)
-    file = forms.FileField()
-    file_field = forms.FileField(widget=MultipleFileInput())
+class FolderFileInput(forms.FileInput):
+    """FileInput with webkitdirectory attribute for folder selection."""
+
+    def __init__(self, attrs=None):
+        forms.Widget.__init__(self, attrs)
+        self.attrs['webkitdirectory'] = True
+        self.attrs['multiple'] = True
+
+    def value_from_datadict(self, data, files, name):
+        return files.getlist(name)
+
+
+class FileUploadForm(forms.Form):
+    """Form for uploading one or more files into a destination folder."""
+    file_field = MultipleFileField(widget=MultipleFileInput())
     folder = forms.ModelChoiceField(
         queryset=UserFolder.objects.none(),
         required=False,
@@ -96,3 +119,21 @@ class UploadFileForm(SlugCleanMixin, forms.Form):
         super().__init__(*args, **kwargs)
         if user is not None:
             self.fields['folder'].queryset = UserFolder.objects.filter(owner=user)
+
+
+class FolderUploadForm(forms.Form):
+    """Form for uploading an entire folder, preserving directory structure."""
+    folder_field = MultipleFileField(widget=FolderFileInput())
+    parent_folder = forms.ModelChoiceField(
+        queryset=UserFolder.objects.none(),
+        help_text='Parent folder to upload into',
+    )
+
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if user is not None:
+            self.fields['parent_folder'].queryset = UserFolder.objects.filter(owner=user)
+
+
+# Keep legacy name as alias for backward compatibility with existing test imports
+UploadFileForm = FileUploadForm
